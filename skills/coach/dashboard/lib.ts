@@ -25,7 +25,7 @@ async function runCoach(args: string[]): Promise<Record<string, unknown>> {
     ['run', 'python', COACH_SCRIPT, ...args],
     {
       cwd: CWD,
-      env: { ...process.env, TYPEDB_DATABASE: 'alhazen_notebook' },
+      env: { ...process.env, TYPEDB_DATABASE: 'alh_personal' },
       maxBuffer: 10 * 1024 * 1024,
     }
   );
