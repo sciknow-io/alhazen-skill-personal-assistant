@@ -49,6 +49,11 @@ attribute jhunt-your-level, value string;
 attribute jhunt-resource-type, value string;
 attribute jhunt-estimated-hours, value integer;
 attribute jhunt-completion-status, value string;
+# Soft cross-database reference to a scilit-paper that lives in the
+# alh_deep_research database (no TypeDB relation can cross databases): the id is
+# resolvable against alh_deep_research; the ref holds a human-readable DOI/title.
+attribute jhunt-cited-paper-id, value string;
+attribute jhunt-cited-paper-ref, value string;
 
 # Contact attributes
 attribute jhunt-contact-role, value string;
@@ -264,6 +269,8 @@ entity jhunt-learning-resource sub alh-domain-thing,
     owns jhunt-resource-url,
     owns jhunt-estimated-hours,
     owns jhunt-completion-status,
+    owns jhunt-cited-paper-id,
+    owns jhunt-cited-paper-ref,
     plays jhunt-addresses-requirement:resource;
 
 # NOTE: jhunt-contact entity type removed — use jhunt-contact-for-opportunity relation instead.

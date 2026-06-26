@@ -1102,27 +1102,39 @@ def cmd_list_background(args):
 
 
 def cmd_link_paper(args):
-    """Link a learning resource to a paper via alh-citation-reference.
+    """Record that a learning resource cites a scilit-paper, as a SOFT reference.
 
-    Creates a alh-citation-reference relation where the learning resource
-    cites the paper. Both types inherit from alh-domain-thing so they
-    can already play citing-item/cited-item roles.
+    The paper lives in the alh_deep_research database (scientific-literature);
+    TypeDB relations cannot cross databases, so instead of an alh-citation-reference
+    relation we store the paper id on the resource (jhunt-cited-paper-id) plus an
+    optional human-readable ref (jhunt-cited-paper-ref, e.g. DOI/title). Resolve
+    the id against alh_deep_research in the app/dashboard layer.
     """
-    timestamp = get_timestamp()
     with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            exists = list(tx.query(
+                f'match $res isa jhunt-learning-resource, has id "{escape_string(args.resource)}";'
+                f' reduce $c = count;').resolve())[0].get("c").try_get_integer()
+        if not exists:
+            print(json.dumps({"success": False, "error": f"learning resource not found: {args.resource}"}))
+            return
+        ref = getattr(args, "ref", None)
         with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
-            link_query = f'''match
-                $res isa jhunt-learning-resource, has id "{args.resource}";
-                $paper isa scilit-paper, has id "{args.paper}";
-            insert (citing-item: $res, cited-item: $paper) isa alh-citation-reference,
-                has created-at {timestamp};'''
-            tx.query(link_query).resolve()
+            # replace any prior soft-ref, then set the new one
+            tx.query(f'match $res isa jhunt-learning-resource, has id "{escape_string(args.resource)}",'
+                     f' has jhunt-cited-paper-id $old; delete has $old of $res;').resolve()
+            set_q = (f'match $res isa jhunt-learning-resource, has id "{escape_string(args.resource)}";'
+                     f' insert $res has jhunt-cited-paper-id "{escape_string(args.paper)}"')
+            if ref:
+                set_q += f', has jhunt-cited-paper-ref "{escape_string(ref)}"'
+            tx.query(set_q + ";").resolve()
             tx.commit()
 
     print(json.dumps({
         "success": True,
         "resource": args.resource,
         "paper": args.paper,
+        "note": "soft reference (paper lives in alh_deep_research; no cross-db relation)",
     }))
 
 
@@ -3164,9 +3176,10 @@ def main():
     p.add_argument("--opportunity", required=True, help="Opportunity ID")
 
     # link-paper
-    p = subparsers.add_parser("link-paper", help="Link learning resource to a paper via alh-citation-reference")
+    p = subparsers.add_parser("link-paper", help="Soft-reference a scilit-paper (in alh_deep_research) from a learning resource")
     p.add_argument("--resource", required=True, help="Learning resource ID")
-    p.add_argument("--paper", required=True, help="Paper ID (scilit-paper)")
+    p.add_argument("--paper", required=True, help="Paper ID (scilit-paper, lives in alh_deep_research)")
+    p.add_argument("--ref", required=False, help="Optional human-readable reference (DOI/title)")
 
     # add-requirement
     p = subparsers.add_parser("add-requirement", help="Add a requirement to a position")
