@@ -1,0 +1,22 @@
+{
+  "name": "alhazen-personal-assistant",
+  "description": "Personal-assistant Alhazen skills sharing one TypeDB database (alh_personal): job-search pipeline management and personal health/fitness monitoring.",
+  "homepage": "https://github.com/sciknow-io/alhazen-skill-personal-assistant",
+  "owner": {
+    "name": "SciKnow.io",
+    "url": "https://github.com/sciknow-io"
+  },
+  "allowCrossMarketplaceDependenciesOn": ["skillful-alhazen"],
+  "plugins": [
+    {
+      "name": "jobhunt",
+      "source": "./skills/jobhunt",
+      "description": "Track job applications, analyze positions, identify skill gaps, and plan your job search strategy"
+    },
+    {
+      "name": "coach",
+      "source": "./skills/coach",
+      "description": "Personal health and fitness monitoring -- ingest HealthKit metrics, track goals, surface regressions, manage appointments"
+    }
+  ]
+}

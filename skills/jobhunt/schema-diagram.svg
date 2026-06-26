@@ -1,0 +1,440 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 2400 1300" font-family="Inter, -apple-system, system-ui, sans-serif">
+  <defs>
+    <filter id="shadow" x="-4%" y="-4%" width="108%" height="108%">
+      <feDropShadow dx="0" dy="2" stdDeviation="3" flood-opacity="0.1"/>
+    </filter>
+  </defs>
+
+  <!-- Background -->
+  <rect width="2400" height="1300" fill="#F8FAFC"/>
+
+  <!-- Title -->
+  <text x="1200" y="48" text-anchor="middle" font-size="24" font-weight="700" fill="#0F172A">Job Hunting Notebook — TypeDB Schema</text>
+  <text x="1200" y="72" text-anchor="middle" font-size="13" fill="#64748B">Entity-Relationship Diagram · Namespace: jobhunt-*</text>
+
+  <!-- ================================================================== -->
+  <!-- LEGEND (32,96) 260x195 → (32,96)-(292,291)                        -->
+  <!-- ================================================================== -->
+  <g transform="translate(20, 20)">
+    <rect width="260" height="220" rx="10" fill="white" stroke="#E2E8F0" filter="url(#shadow)"/>
+    <text x="16" y="26" font-size="11" font-weight="700" fill="#475569" letter-spacing="0.05em">SUPERTYPES</text>
+    <rect x="16" y="40" width="14" height="14" rx="3" fill="#3B82F6"/>  <text x="38" y="52" font-size="12" fill="#334155">collection</text>
+    <rect x="16" y="62" width="14" height="14" rx="3" fill="#10B981"/>  <text x="38" y="74" font-size="12" fill="#334155">domain-thing</text>
+    <rect x="16" y="84" width="14" height="14" rx="3" fill="#F59E0B"/>  <text x="38" y="96" font-size="12" fill="#334155">agent</text>
+    <rect x="16" y="106" width="14" height="14" rx="3" fill="#8B5CF6"/> <text x="38" y="118" font-size="12" fill="#334155">artifact</text>
+    <rect x="16" y="128" width="14" height="14" rx="3" fill="#EF4444"/> <text x="38" y="140" font-size="12" fill="#334155">fragment</text>
+    <rect x="16" y="150" width="14" height="14" rx="3" fill="#F97316"/> <text x="38" y="162" font-size="12" fill="#334155">note</text>
+    <line x1="140" y1="40" x2="140" y2="55" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="6,3"/>
+    <text x="152" y="52" font-size="11" fill="#64748B">relation line</text>
+    <polygon points="140,68 154,75 140,82 126,75" fill="white" stroke="#94A3B8" stroke-width="1.2"/>
+    <text x="162" y="78" font-size="11" fill="#64748B">relation</text>
+    <polygon points="147,96 154,100 147,104 140,100" fill="white" stroke="#94A3B8" stroke-width="1.2"/>
+    <text x="162" y="104" font-size="11" fill="#64748B">role</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- RELATIONSHIP LINES (behind everything)                             -->
+  <!-- Each relation has TWO segments: entity→diamond tip, diamond tip→entity -->
+  <!-- ================================================================== -->
+
+  <!-- POSITION-AT-COMPANY -->
+  <!--   company right edge (740,340) → diamond left tip (795,351) -->
+  <line x1="740" y1="340" x2="795" y2="351" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6,3"/>
+  <!--   diamond right tip (895,351) → position left edge (950,362) -->
+  <line x1="895" y1="351" x2="950" y2="362" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6,3"/>
+
+  <!-- WORKS-AT -->
+  <!--   company bottom edge (635,400) → diamond top tip (580,428) -->
+  <line x1="635" y1="400" x2="580" y2="428" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6,3"/>
+  <!--   diamond bottom tip (580,472) → contact top edge (525,500) -->
+  <line x1="580" y1="472" x2="525" y2="500" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6,3"/>
+
+  <!-- REQUIREMENT-FOR -->
+  <!--   position bottom edge (1065,445) → diamond top tip (1000,477) -->
+  <line x1="1065" y1="445" x2="1000" y2="477" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6,3"/>
+  <!--   diamond bottom tip (1000,527) → requirement top edge (935,560) -->
+  <line x1="1000" y1="527" x2="935" y2="560" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6,3"/>
+
+  <!-- ADDRESSES-REQUIREMENT -->
+  <!--   requirement bottom edge (935,675) → diamond top tip (940,692) -->
+  <line x1="935" y1="675" x2="940" y2="692" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6,3"/>
+  <!--   diamond bottom tip (940,742) → learning-resource top edge (945,760) -->
+  <line x1="940" y1="742" x2="945" y2="760" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6,3"/>
+
+  <!-- SOURCE-PROVIDES -->
+  <!--   search-source bottom edge (190,410) → diamond top tip (190,445) -->
+  <line x1="190" y1="410" x2="190" y2="445" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6,3"/>
+  <!--   diamond bottom tip (190,495) → candidate top edge (190,530) -->
+  <line x1="190" y1="495" x2="190" y2="530" stroke="#94A3B8" stroke-width="2" stroke-dasharray="6,3"/>
+
+  <!-- CROSS-NAMESPACE: collection (jobhunt-search) bottom → requirement left -->
+  <!--   search bottom (450,165) curve → requirement left (830,617) -->
+  <path d="M 450 165 C 450 400, 650 617, 830 617" stroke="#94A3B8" stroke-width="1.5" stroke-dasharray="6,3" fill="none"/>
+
+
+  <!-- ================================================================== -->
+  <!-- RELATION DIAMONDS                                                  -->
+  <!-- ================================================================== -->
+
+  <!-- POSITION-AT-COMPANY diamond: center (845,351) -->
+  <g transform="translate(795, 326)">
+    <polygon points="50,0 100,25 50,50 0,25" fill="white" stroke="#94A3B8" stroke-width="1.5"/>
+    <text x="50" y="22" text-anchor="middle" font-size="8" font-weight="600" fill="#475569">position-at</text>
+    <text x="50" y="32" text-anchor="middle" font-size="8" font-weight="600" fill="#475569">-company</text>
+  </g>
+  <text x="780" y="345" text-anchor="end" font-size="9" fill="#64748B">employer</text>
+  <text x="910" y="345" text-anchor="start" font-size="9" fill="#64748B">position</text>
+
+  <!-- WORKS-AT diamond: center (580,450) -->
+  <g transform="translate(535, 428)">
+    <polygon points="45,0 90,22 45,44 0,22" fill="white" stroke="#94A3B8" stroke-width="1.5"/>
+    <text x="45" y="26" text-anchor="middle" font-size="8" font-weight="600" fill="#475569">works-at</text>
+  </g>
+  <text x="520" y="462" text-anchor="end" font-size="9" fill="#64748B">employee</text>
+  <text x="640" y="440" text-anchor="start" font-size="9" fill="#64748B">employer</text>
+
+  <!-- REQUIREMENT-FOR diamond: center (1000,502) -->
+  <g transform="translate(950, 477)">
+    <polygon points="50,0 100,25 50,50 0,25" fill="white" stroke="#94A3B8" stroke-width="1.5"/>
+    <text x="50" y="22" text-anchor="middle" font-size="8" font-weight="600" fill="#475569">requirement</text>
+    <text x="50" y="32" text-anchor="middle" font-size="8" font-weight="600" fill="#475569">-for</text>
+  </g>
+  <text x="1000" y="472" text-anchor="middle" font-size="9" fill="#64748B">position</text>
+  <text x="1000" y="540" text-anchor="middle" font-size="9" fill="#64748B">requirement</text>
+
+  <!-- ADDRESSES-REQUIREMENT diamond: center (940,717) -->
+  <g transform="translate(885, 692)">
+    <polygon points="55,0 110,25 55,50 0,25" fill="white" stroke="#94A3B8" stroke-width="1.5"/>
+    <text x="55" y="22" text-anchor="middle" font-size="8" font-weight="600" fill="#475569">addresses</text>
+    <text x="55" y="32" text-anchor="middle" font-size="8" font-weight="600" fill="#475569">-requirement</text>
+  </g>
+  <text x="940" y="688" text-anchor="middle" font-size="9" fill="#64748B">requirement</text>
+  <text x="940" y="755" text-anchor="middle" font-size="9" fill="#64748B">resource</text>
+
+  <!-- SOURCE-PROVIDES diamond: center (190,470) -->
+  <g transform="translate(140, 445)">
+    <polygon points="50,0 100,25 50,50 0,25" fill="white" stroke="#94A3B8" stroke-width="1.5"/>
+    <text x="50" y="22" text-anchor="middle" font-size="8" font-weight="600" fill="#475569">source</text>
+    <text x="50" y="32" text-anchor="middle" font-size="8" font-weight="600" fill="#475569">-provides</text>
+  </g>
+  <text x="190" y="440" text-anchor="middle" font-size="9" fill="#64748B">source</text>
+  <text x="190" y="508" text-anchor="middle" font-size="9" fill="#64748B">candidate</text>
+
+
+  <!-- ================================================================== -->
+  <!-- ENTITY: jobhunt-search (Collection)                                -->
+  <!-- Box: (350,110) w=200 h=55 → (350,110)-(550,165)                   -->
+  <!-- ================================================================== -->
+  <g transform="translate(350, 110)">
+    <rect width="200" height="55" rx="8" fill="#3B82F6" filter="url(#shadow)"/>
+    <rect x="1" y="1" width="198" height="53" rx="7" fill="white"/>
+    <rect width="200" height="28" rx="8" fill="#3B82F6"/>
+    <rect y="14" width="200" height="14" fill="#3B82F6"/>
+    <text x="100" y="19" text-anchor="middle" font-size="12" font-weight="700" fill="white">jobhunt-search</text>
+    <text x="12" y="46" font-size="10" fill="#64748B" font-style="italic">sub collection</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- ENTITY: jobhunt-search-source (Domain Thing)                       -->
+  <!-- Box: (80,280) w=220 h=130 → (80,280)-(300,410)                    -->
+  <!-- ================================================================== -->
+  <g transform="translate(80, 280)">
+    <rect width="220" height="130" rx="8" fill="#10B981" filter="url(#shadow)"/>
+    <rect x="1" y="1" width="218" height="128" rx="7" fill="white"/>
+    <rect width="220" height="28" rx="8" fill="#10B981"/>
+    <rect y="14" width="220" height="14" fill="#10B981"/>
+    <text x="110" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="white">jobhunt-search-source</text>
+    <text x="12" y="48" font-size="10" fill="#475569">board-token</text>
+    <text x="12" y="63" font-size="10" fill="#475569">board-platform</text>
+    <text x="12" y="78" font-size="10" fill="#475569">company-url</text>
+    <text x="12" y="93" font-size="10" fill="#475569">search-query</text>
+    <text x="12" y="108" font-size="10" fill="#475569">search-location</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- ENTITY: jobhunt-candidate (Domain Thing)                           -->
+  <!-- Box: (80,530) w=220 h=155 → (80,530)-(300,685)                    -->
+  <!-- ================================================================== -->
+  <g transform="translate(80, 530)">
+    <rect width="220" height="155" rx="8" fill="#10B981" filter="url(#shadow)"/>
+    <rect x="1" y="1" width="218" height="153" rx="7" fill="white"/>
+    <rect width="220" height="28" rx="8" fill="#10B981"/>
+    <rect y="14" width="220" height="14" fill="#10B981"/>
+    <text x="110" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="white">jobhunt-candidate</text>
+    <text x="12" y="48" font-size="10" fill="#475569">job-url</text>
+    <text x="12" y="63" font-size="10" fill="#475569">external-job-id</text>
+    <text x="12" y="78" font-size="10" fill="#475569">location</text>
+    <text x="12" y="93" font-size="10" fill="#475569">discovered-at</text>
+    <text x="12" y="108" font-size="10" fill="#475569">relevance-score</text>
+    <text x="12" y="123" font-size="10" fill="#475569">candidate-status</text>
+    <text x="12" y="138" font-size="10" fill="#475569">triage-reason</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- ENTITY: jobhunt-company (Domain Thing)                             -->
+  <!-- Box: (530,280) w=210 h=120 → (530,280)-(740,400)                  -->
+  <!-- ================================================================== -->
+  <g transform="translate(530, 280)">
+    <rect width="210" height="120" rx="8" fill="#10B981" filter="url(#shadow)"/>
+    <rect x="1" y="1" width="208" height="118" rx="7" fill="white"/>
+    <rect width="210" height="28" rx="8" fill="#10B981"/>
+    <rect y="14" width="210" height="14" fill="#10B981"/>
+    <text x="105" y="19" text-anchor="middle" font-size="12" font-weight="700" fill="white">jobhunt-company</text>
+    <text x="12" y="48" font-size="10" fill="#475569">company-url</text>
+    <text x="12" y="63" font-size="10" fill="#475569">linkedin-url</text>
+    <text x="12" y="78" font-size="10" fill="#475569">location</text>
+    <text x="12" y="100" font-size="9" fill="#94A3B8" font-style="italic">plays: employer</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- ENTITY: jobhunt-position (Domain Thing)                            -->
+  <!-- Box: (950,280) w=230 h=165 → (950,280)-(1180,445)                 -->
+  <!-- ================================================================== -->
+  <g transform="translate(950, 280)">
+    <rect width="230" height="165" rx="8" fill="#10B981" filter="url(#shadow)"/>
+    <rect x="1" y="1" width="228" height="163" rx="7" fill="white"/>
+    <rect width="230" height="28" rx="8" fill="#10B981"/>
+    <rect y="14" width="230" height="14" fill="#10B981"/>
+    <text x="115" y="19" text-anchor="middle" font-size="12" font-weight="700" fill="white">jobhunt-position</text>
+    <text x="12" y="48" font-size="10" fill="#475569">job-url</text>
+    <text x="12" y="63" font-size="10" fill="#475569">short-name</text>
+    <text x="12" y="78" font-size="10" fill="#475569">salary-range</text>
+    <text x="12" y="93" font-size="10" fill="#475569">location · remote-policy</text>
+    <text x="12" y="108" font-size="10" fill="#475569">team-size · deadline</text>
+    <text x="12" y="123" font-size="10" fill="#475569">priority-level</text>
+    <text x="12" y="148" font-size="9" fill="#94A3B8" font-style="italic">plays: position</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- ENTITY: jobhunt-contact (Agent)                                    -->
+  <!-- Box: (420,500) w=210 h=115 → (420,500)-(630,615)                  -->
+  <!-- ================================================================== -->
+  <g transform="translate(420, 500)">
+    <rect width="210" height="115" rx="8" fill="#F59E0B" filter="url(#shadow)"/>
+    <rect x="1" y="1" width="208" height="113" rx="7" fill="white"/>
+    <rect width="210" height="28" rx="8" fill="#F59E0B"/>
+    <rect y="14" width="210" height="14" fill="#F59E0B"/>
+    <text x="105" y="19" text-anchor="middle" font-size="12" font-weight="700" fill="white">jobhunt-contact</text>
+    <text x="12" y="48" font-size="10" fill="#475569">contact-role</text>
+    <text x="12" y="63" font-size="10" fill="#475569">contact-email</text>
+    <text x="12" y="78" font-size="10" fill="#475569">linkedin-url</text>
+    <text x="12" y="100" font-size="9" fill="#94A3B8" font-style="italic">sub agent · plays: employee</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- ENTITY: jobhunt-requirement (Fragment)                             -->
+  <!-- Box: (830,560) w=210 h=115 → (830,560)-(1040,675)                 -->
+  <!-- ================================================================== -->
+  <g transform="translate(830, 560)">
+    <rect width="210" height="115" rx="8" fill="#EF4444" filter="url(#shadow)"/>
+    <rect x="1" y="1" width="208" height="113" rx="7" fill="white"/>
+    <rect width="210" height="28" rx="8" fill="#EF4444"/>
+    <rect y="14" width="210" height="14" fill="#EF4444"/>
+    <text x="105" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="white">jobhunt-requirement</text>
+    <text x="12" y="48" font-size="10" fill="#475569">skill-name</text>
+    <text x="12" y="63" font-size="10" fill="#475569">skill-level</text>
+    <text x="12" y="78" font-size="10" fill="#475569">your-level</text>
+    <text x="12" y="100" font-size="9" fill="#94A3B8" font-style="italic">sub fragment</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- ENTITY: jobhunt-learning-resource (Domain Thing)                   -->
+  <!-- Box: (830,760) w=230 h=120 → (830,760)-(1060,880)                 -->
+  <!-- ================================================================== -->
+  <g transform="translate(830, 760)">
+    <rect width="230" height="120" rx="8" fill="#10B981" filter="url(#shadow)"/>
+    <rect x="1" y="1" width="228" height="118" rx="7" fill="white"/>
+    <rect width="230" height="28" rx="8" fill="#10B981"/>
+    <rect y="14" width="230" height="14" fill="#10B981"/>
+    <text x="115" y="19" text-anchor="middle" font-size="11" font-weight="700" fill="white">jobhunt-learning-resource</text>
+    <text x="12" y="48" font-size="10" fill="#475569">resource-type</text>
+    <text x="12" y="63" font-size="10" fill="#475569">resource-url</text>
+    <text x="12" y="78" font-size="10" fill="#475569">estimated-hours</text>
+    <text x="12" y="93" font-size="10" fill="#475569">completion-status</text>
+    <text x="12" y="110" font-size="9" fill="#94A3B8" font-style="italic">plays: resource</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- ENTITY: your-skill (Domain Thing)                                  -->
+  <!-- Box: (560,720) w=200 h=105 → (560,720)-(760,825)                  -->
+  <!-- ================================================================== -->
+  <g transform="translate(560, 720)">
+    <rect width="200" height="105" rx="8" fill="#10B981" filter="url(#shadow)"/>
+    <rect x="1" y="1" width="198" height="103" rx="7" fill="white"/>
+    <rect width="200" height="28" rx="8" fill="#10B981"/>
+    <rect y="14" width="200" height="14" fill="#10B981"/>
+    <text x="100" y="19" text-anchor="middle" font-size="12" font-weight="700" fill="white">your-skill</text>
+    <text x="12" y="48" font-size="10" fill="#475569">skill-name</text>
+    <text x="12" y="63" font-size="10" fill="#475569">skill-level</text>
+    <text x="12" y="78" font-size="10" fill="#475569">last-updated</text>
+    <text x="12" y="97" font-size="9" fill="#94A3B8" font-style="italic">sub domain-thing</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- ARTIFACTS GROUP                                                    -->
+  <!-- Outer: (1338,84)-(1588,440)                                        -->
+  <!-- ================================================================== -->
+  <g transform="translate(1350, 100)">
+    <rect x="-12" y="-16" width="260" height="355" rx="12" fill="#F3E8FF" stroke="#8B5CF6" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
+    <text x="118" y="2" text-anchor="middle" font-size="10" font-weight="700" fill="#8B5CF6" letter-spacing="0.08em">ARTIFACTS</text>
+
+    <!-- jobhunt-job-description: (0,16) w=236 h=50 -->
+    <rect y="16" width="236" height="50" rx="6" fill="#8B5CF6" filter="url(#shadow)"/>
+    <rect x="1" y="17" width="234" height="48" rx="5" fill="white"/>
+    <rect y="16" width="236" height="24" rx="6" fill="#8B5CF6"/>
+    <rect y="28" width="236" height="12" fill="#8B5CF6"/>
+    <text x="118" y="34" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-job-description</text>
+    <text x="12" y="56" font-size="9" fill="#94A3B8" font-style="italic">sub artifact</text>
+
+    <!-- jobhunt-resume: (0,86) w=236 h=50 -->
+    <rect y="86" width="236" height="50" rx="6" fill="#8B5CF6" filter="url(#shadow)"/>
+    <rect x="1" y="87" width="234" height="48" rx="5" fill="white"/>
+    <rect y="86" width="236" height="24" rx="6" fill="#8B5CF6"/>
+    <rect y="98" width="236" height="12" fill="#8B5CF6"/>
+    <text x="118" y="104" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-resume</text>
+    <text x="12" y="126" font-size="9" fill="#94A3B8" font-style="italic">sub artifact</text>
+
+    <!-- jobhunt-cover-letter: (0,156) w=236 h=50 -->
+    <rect y="156" width="236" height="50" rx="6" fill="#8B5CF6" filter="url(#shadow)"/>
+    <rect x="1" y="157" width="234" height="48" rx="5" fill="white"/>
+    <rect y="156" width="236" height="24" rx="6" fill="#8B5CF6"/>
+    <rect y="168" width="236" height="12" fill="#8B5CF6"/>
+    <text x="118" y="174" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-cover-letter</text>
+    <text x="12" y="196" font-size="9" fill="#94A3B8" font-style="italic">sub artifact</text>
+
+    <!-- jobhunt-company-page: (0,226) w=236 h=50 -->
+    <rect y="226" width="236" height="50" rx="6" fill="#8B5CF6" filter="url(#shadow)"/>
+    <rect x="1" y="227" width="234" height="48" rx="5" fill="white"/>
+    <rect y="226" width="236" height="24" rx="6" fill="#8B5CF6"/>
+    <rect y="238" width="236" height="12" fill="#8B5CF6"/>
+    <text x="118" y="244" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-company-page</text>
+    <text x="12" y="266" font-size="9" fill="#94A3B8" font-style="italic">sub artifact</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- FRAGMENTS GROUP                                                    -->
+  <!-- Outer: (1338,504)-(1598,720)                                       -->
+  <!-- ================================================================== -->
+  <g transform="translate(1350, 520)">
+    <rect x="-12" y="-16" width="260" height="200" rx="12" fill="#FEE2E2" stroke="#EF4444" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
+    <text x="118" y="2" text-anchor="middle" font-size="10" font-weight="700" fill="#EF4444" letter-spacing="0.08em">FRAGMENTS</text>
+
+    <!-- jobhunt-responsibility: (0,16) w=236 h=50 -->
+    <rect y="16" width="236" height="50" rx="6" fill="#EF4444" filter="url(#shadow)"/>
+    <rect x="1" y="17" width="234" height="48" rx="5" fill="white"/>
+    <rect y="16" width="236" height="24" rx="6" fill="#EF4444"/>
+    <rect y="28" width="236" height="12" fill="#EF4444"/>
+    <text x="118" y="34" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-responsibility</text>
+    <text x="12" y="56" font-size="9" fill="#94A3B8" font-style="italic">sub fragment</text>
+
+    <!-- jobhunt-qualification: (0,86) w=236 h=50 -->
+    <rect y="86" width="236" height="50" rx="6" fill="#EF4444" filter="url(#shadow)"/>
+    <rect x="1" y="87" width="234" height="48" rx="5" fill="white"/>
+    <rect y="86" width="236" height="24" rx="6" fill="#EF4444"/>
+    <rect y="98" width="236" height="12" fill="#EF4444"/>
+    <text x="118" y="104" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-qualification</text>
+    <text x="12" y="126" font-size="9" fill="#94A3B8" font-style="italic">sub fragment</text>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- NOTES GROUP                                                        -->
+  <!-- Outer: (28,934)-(1330,1184)                                        -->
+  <!-- ================================================================== -->
+  <g transform="translate(40, 950)">
+    <rect x="-12" y="-16" width="1300" height="240" rx="12" fill="#FFF7ED" stroke="#F97316" stroke-width="1" stroke-dasharray="4,4" opacity="0.5"/>
+    <text x="638" y="2" text-anchor="middle" font-size="10" font-weight="700" fill="#F97316" letter-spacing="0.08em">NOTES</text>
+
+    <!-- Row 1 -->
+
+    <!-- Application Note: (0,16) w=280 h=105 -->
+    <g transform="translate(0, 16)">
+      <rect width="280" height="105" rx="6" fill="#F97316" filter="url(#shadow)"/>
+      <rect x="1" y="1" width="278" height="103" rx="5" fill="white"/>
+      <rect width="280" height="24" rx="6" fill="#F97316"/>
+      <rect y="12" width="280" height="12" fill="#F97316"/>
+      <text x="140" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-application-note</text>
+      <text x="12" y="42" font-size="10" fill="#475569">application-status</text>
+      <text x="12" y="57" font-size="10" fill="#475569">applied-date</text>
+      <text x="12" y="72" font-size="10" fill="#475569">response-date</text>
+      <text x="12" y="94" font-size="9" fill="#94A3B8" font-style="italic">sub note</text>
+    </g>
+
+    <!-- Fit Analysis Note: (300,16) w=260 h=90 -->
+    <g transform="translate(300, 16)">
+      <rect width="260" height="90" rx="6" fill="#F97316" filter="url(#shadow)"/>
+      <rect x="1" y="1" width="258" height="88" rx="5" fill="white"/>
+      <rect width="260" height="24" rx="6" fill="#F97316"/>
+      <rect y="12" width="260" height="12" fill="#F97316"/>
+      <text x="130" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-fit-analysis-note</text>
+      <text x="12" y="42" font-size="10" fill="#475569">fit-score (0.0–1.0)</text>
+      <text x="12" y="57" font-size="10" fill="#475569">fit-summary</text>
+      <text x="12" y="79" font-size="9" fill="#94A3B8" font-style="italic">sub note</text>
+    </g>
+
+    <!-- Interaction Note: (580,16) w=260 h=75 -->
+    <g transform="translate(580, 16)">
+      <rect width="260" height="75" rx="6" fill="#F97316" filter="url(#shadow)"/>
+      <rect x="1" y="1" width="258" height="73" rx="5" fill="white"/>
+      <rect width="260" height="24" rx="6" fill="#F97316"/>
+      <rect y="12" width="260" height="12" fill="#F97316"/>
+      <text x="130" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-interaction-note</text>
+      <text x="12" y="42" font-size="10" fill="#475569">interaction-type</text>
+      <text x="12" y="57" font-size="10" fill="#475569">interaction-date</text>
+    </g>
+
+    <!-- Interview Note: (580,108) w=260 h=75 -->
+    <g transform="translate(580, 108)">
+      <rect width="260" height="75" rx="6" fill="#F97316" filter="url(#shadow)"/>
+      <rect x="1" y="1" width="258" height="73" rx="5" fill="white"/>
+      <rect width="260" height="24" rx="6" fill="#F97316"/>
+      <rect y="12" width="260" height="12" fill="#F97316"/>
+      <text x="130" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-interview-note</text>
+      <text x="12" y="42" font-size="10" fill="#475569">interview-date</text>
+      <text x="12" y="64" font-size="9" fill="#94A3B8" font-style="italic">sub note</text>
+    </g>
+
+    <!-- Row 2 -->
+
+    <!-- Research Note: (0,138) w=280 h=50 -->
+    <g transform="translate(0, 138)">
+      <rect width="280" height="50" rx="6" fill="#F97316" filter="url(#shadow)"/>
+      <rect x="1" y="1" width="278" height="48" rx="5" fill="white"/>
+      <rect width="280" height="24" rx="6" fill="#F97316"/>
+      <rect y="12" width="280" height="12" fill="#F97316"/>
+      <text x="140" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-research-note</text>
+      <text x="12" y="42" font-size="9" fill="#94A3B8" font-style="italic">sub note</text>
+    </g>
+
+    <!-- Strategy Note: (300,122) w=260 h=50 -->
+    <g transform="translate(300, 122)">
+      <rect width="260" height="50" rx="6" fill="#F97316" filter="url(#shadow)"/>
+      <rect x="1" y="1" width="258" height="48" rx="5" fill="white"/>
+      <rect width="260" height="24" rx="6" fill="#F97316"/>
+      <rect y="12" width="260" height="12" fill="#F97316"/>
+      <text x="130" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-strategy-note</text>
+      <text x="12" y="42" font-size="9" fill="#94A3B8" font-style="italic">sub note</text>
+    </g>
+
+    <!-- Skill Gap Note: (860,16) w=260 h=50 -->
+    <g transform="translate(860, 16)">
+      <rect width="260" height="50" rx="6" fill="#F97316" filter="url(#shadow)"/>
+      <rect x="1" y="1" width="258" height="48" rx="5" fill="white"/>
+      <rect width="260" height="24" rx="6" fill="#F97316"/>
+      <rect y="12" width="260" height="12" fill="#F97316"/>
+      <text x="130" y="18" text-anchor="middle" font-size="10" font-weight="600" fill="white">jobhunt-skill-gap-note</text>
+      <text x="12" y="42" font-size="9" fill="#94A3B8" font-style="italic">sub note</text>
+    </g>
+  </g>
+
+  <!-- ================================================================== -->
+  <!-- CROSS-NAMESPACE ANNOTATION                                         -->
+  <!-- (40,900) w=460 h=28                                                -->
+  <!-- ================================================================== -->
+  <g transform="translate(40, 900)">
+    <rect width="460" height="28" rx="6" fill="#DBEAFE" stroke="#93C5FD"/>
+    <text x="14" y="19" font-size="10" fill="#1E40AF">↗ Cross-namespace: collection also plays addresses-requirement:resource</text>
+  </g>
+
+  <!-- Footer -->
+  <text x="1200" y="1280" text-anchor="middle" font-size="11" fill="#94A3B8">Generated from schema.tql · TypeDB 2.x · jobhunt-* namespace</text>
+</svg>

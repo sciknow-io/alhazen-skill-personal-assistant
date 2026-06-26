@@ -1,0 +1,13 @@
+{
+  "name": "coach",
+  "display_name": "Health Coach Notebook",
+  "description": "Personal health & fitness monitoring \u2014 ingest HealthKit metrics, track goals, surface regressions, manage appointments.",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "dependencies": [
+    {
+      "name": "alhazen-core",
+      "marketplace": "skillful-alhazen"
+    }
+  ]
+}

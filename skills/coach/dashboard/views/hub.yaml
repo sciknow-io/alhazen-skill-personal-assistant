@@ -1,0 +1,20 @@
+name: Health Coach Hub
+description: Overview dashboard with metric cards, goals, and recommendations
+path: /coach
+queries:
+  trends:
+    typeql: |
+      match $m isa coach-daily-metric;
+      fetch { "type": $m.coach-metric-type, "date": $m.coach-date, "value": $m.coach-value };
+  goals:
+    typeql: |
+      match $g isa coach-health-goal, has coach-goal-status "active";
+      fetch { "id": $g.id, "name": $g.name, "metric": $g.coach-goal-metric, "target": $g.coach-goal-target };
+  recommendations:
+    typeql: |
+      match $r isa coach-recommendation-note, has coach-rec-status $s; not { $s == "done"; }; not { $s == "dismissed"; };
+      fetch { "id": $r.id, "name": $r.name, "content": $r.content, "priority": $r.coach-rec-priority };
+  pipeline:
+    typeql: |
+      match $p isa coach-pipeline-status;
+      fetch { "health": $p.coach-pipeline-health, "last_ingest": $p.coach-last-ingest-date };

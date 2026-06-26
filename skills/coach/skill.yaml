@@ -1,0 +1,148 @@
+name: coach
+description: "Personal health & fitness monitoring — ingest HealthKit metrics, track goals, surface regressions, manage appointments"
+license: Apache-2.0
+compatibility: "Requires uv, docker, TypeDB 3.x running"
+
+# Core files
+scripts:
+  - coach.py
+schema: schema.tql
+
+# Dependencies
+requires:
+  bins: [uv, docker]
+  env: [TYPEDB_HOST, TYPEDB_PORT, TYPEDB_DATABASE]
+
+# TypeDB namespace
+namespaces:
+  - schema.tql
+
+schema:
+  namespace: coach
+
+# Design pattern
+pattern: curation
+phases:
+  - foraging: "Poll Google Drive for new Health Auto Export JSON files"
+  - ingestion: "Parse daily JSON, aggregate metrics, upsert into TypeDB"
+  - sensemaking: "Claude reads trends, applies run detection heuristics, classifies anomalies"
+  - analysis: "Heartbeat cycle: compute deltas, compare to goals, generate recommendations"
+  - reporting: "Weekly brief, dashboard rendering, on-demand status queries"
+
+# Core operations
+operations:
+  # Pipeline
+  - ingest-daily
+  - pipeline-status
+
+  # Queries
+  - latest
+  - trends
+  - sleep-summary
+  - workout-history
+  - show-metric
+
+  # Goals
+  - add-goal
+  - list-goals
+  - update-goal
+
+  # Appointments
+  - add-appointment
+  - list-appointments
+  - update-appointment
+
+  # Providers
+  - add-provider
+  - list-providers
+
+  # Recommendations
+  - add-recommendation
+  - list-recommendations
+  - update-recommendation
+
+  # Profile
+  - set-profile
+  - show-profile
+
+  # Utility
+  - tag
+  - search-tag
+
+# Entity types
+entities:
+  things:
+    - coach-daily-metric
+    - coach-sleep-record
+    - coach-workout
+    - coach-appointment
+    - coach-provider
+    - coach-health-goal
+    - coach-trend
+    - coach-pipeline-status
+  artifacts:
+    - coach-health-export
+  notes:
+    - coach-recommendation-note
+    - coach-heartbeat-note
+    - coach-trend-note
+    - coach-appointment-prep-note
+  collections:
+    - coach-metric-series
+    - coach-weekly-report
+  roles:
+    - coach-health-seeker
+
+# Status values
+goal_statuses:
+  - active
+  - achieved
+  - paused
+
+appointment_statuses:
+  - upcoming
+  - completed
+  - cancelled
+
+recommendation_statuses:
+  - new
+  - in-progress
+  - done
+  - dismissed
+
+pipeline_health:
+  - healthy
+  - stale
+  - broken
+
+# Dashboard
+dashboard:
+  enabled: true
+  name: "Health Coach Dashboard"
+  url_path: "/coach"
+  description: "Metric trends, sleep analysis, workout history, goals, appointments"
+  views:
+    - name: Overview
+      path: /coach
+      description: "Metric cards, goals progress, pipeline health, recommendations"
+    - name: Trends
+      path: /coach/trends
+      description: "Time-series charts with 7d/30d/90d toggles"
+    - name: Sleep
+      path: /coach/sleep
+      description: "Sleep stage breakdown and rolling averages"
+    - name: Workouts
+      path: /coach/workouts
+      description: "Workout calendar and detail cards"
+    - name: Appointments
+      path: /coach/appointments
+      description: "Timeline view with provider cadence alerts"
+  internal:
+    pages: dashboard/pages/
+    components: dashboard/components/
+    api_routes: dashboard/routes/
+    lib: dashboard/lib.ts
+
+# Integration
+integrates_with:
+  - typedb-notebook

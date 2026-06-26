@@ -1,0 +1,16 @@
+name: Sleep Analysis
+description: Sleep stage breakdown and rolling averages
+path: /coach/sleep
+queries:
+  sleep_records:
+    typeql: |
+      match $s isa coach-sleep-record;
+      fetch {
+        "date": $s.coach-date,
+        "asleep_hrs": $s.coach-asleep-hrs,
+        "deep_hrs": $s.coach-deep-hrs,
+        "core_hrs": $s.coach-core-hrs,
+        "rem_hrs": $s.coach-rem-hrs,
+        "awake_hrs": $s.coach-awake-hrs,
+        "in_bed_hrs": $s.coach-in-bed-hrs
+      };

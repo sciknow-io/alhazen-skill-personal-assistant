@@ -1,0 +1,399 @@
+# =============================================================================
+# HEALTH COACH NAMESPACE (coach-) - TypeDB 3.x Schema Extension
+# =============================================================================
+# Domain-specific subtypes for personal health & fitness monitoring.
+# TypeDB as Claude's "world model" for reasoning about health metrics, goals,
+# appointments, trends, and autonomous recommendations.
+# Namespace prefix: coach-*
+#
+# Design decision: Daily aggregates in TypeDB, raw time-series in SQLite.
+# TypeDB excels at relational reasoning (metric->goal->recommendation),
+# not high-cardinality time-series scans.
+# =============================================================================
+
+define
+
+# -----------------------------------------------------------------------------
+# ATTRIBUTE TYPES - Health Coach Specific
+# -----------------------------------------------------------------------------
+
+# Metric attributes
+attribute coach-metric-type, value string;
+attribute coach-date, value datetime;
+attribute coach-value, value double;
+attribute coach-min-value, value double;
+attribute coach-max-value, value double;
+attribute coach-avg-value, value double;
+attribute coach-units, value string;
+attribute coach-source, value string;
+
+# Sleep-specific
+attribute coach-in-bed-hrs, value double;
+attribute coach-asleep-hrs, value double;
+attribute coach-deep-hrs, value double;
+attribute coach-core-hrs, value double;
+attribute coach-rem-hrs, value double;
+attribute coach-awake-hrs, value double;
+attribute coach-sleep-start, value datetime;
+attribute coach-sleep-end, value datetime;
+
+# Workout-specific
+attribute coach-workout-type, value string;
+attribute coach-duration-min, value double;
+attribute coach-distance-mi, value double;
+attribute coach-avg-hr, value double;
+attribute coach-max-hr, value double;
+attribute coach-active-energy-kcal, value double;
+attribute coach-step-count, value integer;
+
+# Appointment attributes
+attribute coach-appointment-type, value string;
+attribute coach-provider-name, value string;
+attribute coach-appointment-date, value datetime;
+attribute coach-appointment-status, value string;
+attribute coach-prep-action, value string;
+attribute coach-cadence-months, value integer;
+
+# Goal attributes
+attribute coach-goal-metric, value string;
+attribute coach-goal-target, value double;
+attribute coach-goal-direction, value string;
+attribute coach-goal-period, value string;
+attribute coach-goal-status, value string;
+
+# Recommendation attributes
+attribute coach-rec-status, value string;
+attribute coach-rec-priority, value string;
+attribute coach-rec-expires-at, value datetime;
+
+# Trend attributes
+attribute coach-trend-direction, value string;
+attribute coach-delta-7d, value double;
+attribute coach-delta-30d, value double;
+attribute coach-baseline-value, value double;
+
+# Pipeline attributes
+attribute coach-last-export-date, value datetime;
+attribute coach-last-ingest-date, value datetime;
+attribute coach-records-count, value integer;
+attribute coach-pipeline-health, value string;
+
+# User profile attributes
+attribute coach-birth-year, value integer;
+attribute coach-timezone, value string;
+attribute coach-comm-preference, value string;
+attribute coach-baseline-rhr, value double;
+attribute coach-baseline-hrv, value double;
+attribute coach-sleep-target-hrs, value double;
+attribute coach-step-goal, value integer;
+attribute coach-weight-goal, value double;
+
+
+# -----------------------------------------------------------------------------
+# RELATION TYPES - defined before entities so role names resolve in plays clauses
+# -----------------------------------------------------------------------------
+
+# METRIC-FOR-GOAL - Links daily metrics to the goals they feed
+relation coach-metric-for-goal,
+    relates metric-reading,
+    relates goal;
+
+# TREND-FOR-METRIC - Links trend analysis to the metric type it covers
+relation coach-trend-for-metric,
+    relates trend,
+    relates metric-source;
+
+# RECOMMENDATION-TRIGGER - What metric/trend triggered the recommendation
+relation coach-recommendation-trigger,
+    relates recommendation,
+    relates trigger-metric;
+
+# GOAL-OWNERSHIP - Who owns the goal
+relation coach-goal-ownership,
+    relates goal,
+    relates seeker;
+
+# APPOINTMENT-WITH - Links appointment to provider
+relation coach-appointment-with,
+    relates appointment,
+    relates provider;
+
+# SEEKER-HAS-PROVIDER - Links seeker to their care providers
+relation coach-seeker-has-provider,
+    relates seeker,
+    relates provider;
+
+# Support role type (PCP, PT, nutritionist, coach, dentist, etc.)
+attribute coach-support-role-type, value string;
+
+# COACH-SUPPORT-ROLE - A person's role on the health support team (BFO/UFO pattern)
+# Linked to a person via alh-role-bearing (inherited from alh-role)
+entity coach-support-role sub alh-role,
+    owns coach-support-role-type,
+    owns coach-appointment-type,
+    plays coach-support-team:support-role;
+
+# COACH-SUPPORT-TEAM - Links seeker to a support role (borne by a person)
+relation coach-support-team,
+    relates seeker,
+    relates support-role;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Collections
+# -----------------------------------------------------------------------------
+
+# COACH-METRIC-SERIES - Groups daily readings of one metric type
+entity coach-metric-series sub alh-collection;
+
+# COACH-WEEKLY-REPORT - Groups a week's trend notes and recommendations
+entity coach-weekly-report sub alh-collection;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Profile
+# -----------------------------------------------------------------------------
+
+# COACH-HEALTH-SEEKER - The role a person plays as someone being health-coached
+# BFO/UFO pattern: anti-rigid, bearer-dependent on alh-person
+entity coach-health-seeker sub alh-role,
+    owns coach-birth-year,
+    owns coach-timezone,
+    owns coach-comm-preference,
+    owns coach-baseline-rhr,
+    owns coach-baseline-hrv,
+    owns coach-sleep-target-hrs,
+    owns coach-step-goal,
+    owns coach-weight-goal,
+    owns coach-calorie-goal,
+    owns coach-protein-goal-g,
+    owns coach-carbs-goal-g,
+    owns coach-fat-goal-g,
+    plays coach-goal-ownership:seeker,
+    plays coach-seeker-has-provider:seeker,
+    plays coach-support-team:seeker;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Domain Things
+# -----------------------------------------------------------------------------
+
+# COACH-DAILY-METRIC - One record per metric-type per day (daily aggregate)
+entity coach-daily-metric sub alh-domain-thing,
+    owns coach-metric-type,
+    owns coach-date,
+    owns coach-value,
+    owns coach-min-value,
+    owns coach-max-value,
+    owns coach-avg-value,
+    owns coach-units,
+    owns coach-source,
+    plays coach-metric-for-goal:metric-reading,
+    plays coach-trend-for-metric:metric-source,
+    plays coach-recommendation-trigger:trigger-metric;
+
+# COACH-SLEEP-RECORD - One record per night with stage breakdown
+entity coach-sleep-record sub alh-domain-thing,
+    owns coach-date,
+    owns coach-in-bed-hrs,
+    owns coach-asleep-hrs,
+    owns coach-deep-hrs,
+    owns coach-core-hrs,
+    owns coach-rem-hrs,
+    owns coach-awake-hrs,
+    owns coach-sleep-start,
+    owns coach-sleep-end,
+    owns coach-source;
+
+# COACH-WORKOUT - A formal workout session
+entity coach-workout sub alh-domain-thing,
+    owns coach-workout-type,
+    owns coach-date,
+    owns coach-duration-min,
+    owns coach-distance-mi,
+    owns coach-avg-hr,
+    owns coach-max-hr,
+    owns coach-active-energy-kcal,
+    owns coach-step-count,
+    owns coach-source;
+
+# COACH-APPOINTMENT - A health appointment
+entity coach-appointment sub alh-domain-thing,
+    owns coach-appointment-type,
+    owns coach-appointment-date,
+    owns coach-appointment-status,
+    owns coach-prep-action,
+    owns coach-provider-name,
+    plays coach-appointment-with:appointment;
+
+# COACH-PROVIDER - A healthcare provider with cadence tracking
+entity coach-provider sub alh-domain-thing,
+    owns coach-appointment-type,
+    owns coach-cadence-months,
+    plays coach-appointment-with:provider,
+    plays coach-seeker-has-provider:provider;
+
+# COACH-HEALTH-GOAL - A health metric target
+entity coach-health-goal sub alh-domain-thing,
+    owns coach-goal-metric,
+    owns coach-goal-target,
+    owns coach-goal-direction,
+    owns coach-goal-period,
+    owns coach-goal-status,
+    plays coach-metric-for-goal:goal,
+    plays coach-goal-ownership:goal;
+
+# COACH-TREND - Computed trend analysis (stored periodically)
+entity coach-trend sub alh-domain-thing,
+    owns coach-metric-type,
+    owns coach-date,
+    owns coach-trend-direction,
+    owns coach-delta-7d,
+    owns coach-delta-30d,
+    owns coach-baseline-value,
+    plays coach-trend-for-metric:trend;
+
+# COACH-PIPELINE-STATUS - Ingest pipeline health tracker (singleton)
+entity coach-pipeline-status sub alh-domain-thing,
+    owns coach-last-export-date,
+    owns coach-last-ingest-date,
+    owns coach-records-count,
+    owns coach-pipeline-health;
+
+
+# Lab result attributes
+attribute coach-lab-test-name, value string;
+attribute coach-lab-value, value double;
+attribute coach-lab-value-text, value string;
+attribute coach-lab-flag, value string;
+attribute coach-lab-reference-range, value string;
+attribute coach-lab-panel-name, value string;
+attribute coach-lab-provider, value string;
+attribute coach-lab-physician, value string;
+attribute coach-lab-specimen-id, value string;
+
+
+# LAB-RESULT-IN-PANEL - Links individual lab results to their panel
+relation coach-lab-result-in-panel,
+    relates lab-result,
+    relates panel;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Lab Results
+# -----------------------------------------------------------------------------
+
+# COACH-LAB-PANEL - Groups results from one blood draw / lab visit
+entity coach-lab-panel sub alh-domain-thing,
+    owns coach-date,
+    owns coach-lab-provider,
+    owns coach-lab-physician,
+    owns coach-lab-specimen-id,
+    owns coach-source,
+    plays coach-lab-result-in-panel:panel;
+
+# COACH-LAB-RESULT - One test within a panel (e.g., "Glucose: 83 mg/dL")
+entity coach-lab-result sub alh-domain-thing,
+    owns coach-lab-test-name,
+    owns coach-lab-value,
+    owns coach-lab-value-text,
+    owns coach-lab-flag,
+    owns coach-lab-reference-range,
+    owns coach-lab-panel-name,
+    owns coach-units,
+    plays coach-lab-result-in-panel:lab-result;
+
+
+# Nutrition attributes
+attribute coach-calories, value double;
+attribute coach-protein-g, value double;
+attribute coach-carbs-g, value double;
+attribute coach-fat-g, value double;
+attribute coach-fiber-g, value double;
+attribute coach-sugar-g, value double;
+attribute coach-sodium-mg, value double;
+attribute coach-water-oz, value double;
+attribute coach-meal-type, value string;
+attribute coach-food-name, value string;
+attribute coach-serving-size, value string;
+attribute coach-calorie-goal, value double;
+attribute coach-protein-goal-g, value double;
+attribute coach-carbs-goal-g, value double;
+attribute coach-fat-goal-g, value double;
+
+
+# MEAL-IN-DAY - Links individual meals to their daily summary
+relation coach-meal-in-day,
+    relates meal,
+    relates nutrition-day;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Nutrition
+# -----------------------------------------------------------------------------
+
+# COACH-NUTRITION-DAY - Daily macro summary (one per day)
+entity coach-nutrition-day sub alh-domain-thing,
+    owns coach-date,
+    owns coach-calories,
+    owns coach-protein-g,
+    owns coach-carbs-g,
+    owns coach-fat-g,
+    owns coach-fiber-g,
+    owns coach-sugar-g,
+    owns coach-sodium-mg,
+    owns coach-water-oz,
+    owns coach-calorie-goal,
+    owns coach-protein-goal-g,
+    owns coach-carbs-goal-g,
+    owns coach-fat-goal-g,
+    owns coach-source,
+    plays coach-meal-in-day:nutrition-day;
+
+# COACH-MEAL - Individual meal/food entry
+entity coach-meal sub alh-domain-thing,
+    owns coach-date,
+    owns coach-meal-type,
+    owns coach-food-name,
+    owns coach-serving-size,
+    owns coach-calories,
+    owns coach-protein-g,
+    owns coach-carbs-g,
+    owns coach-fat-g,
+    owns coach-source,
+    plays coach-meal-in-day:meal;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Artifacts
+# -----------------------------------------------------------------------------
+
+# COACH-HEALTH-EXPORT - Raw export file record (provenance)
+entity coach-health-export sub alh-artifact;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Notes
+# -----------------------------------------------------------------------------
+
+# COACH-ASSESSMENT-NOTE - Periodic health evaluation written by Claude
+# Content is markdown: current status, flagged concerns, action plan
+entity coach-assessment-note sub alh-analysis-note,
+    owns coach-date;
+
+# COACH-RECOMMENDATION-NOTE - Actionable recommendation with lifecycle
+entity coach-recommendation-note sub alh-reporting-note,
+    owns coach-rec-status,
+    owns coach-rec-priority,
+    owns coach-rec-expires-at,
+    plays coach-recommendation-trigger:recommendation;
+
+# COACH-HEARTBEAT-NOTE - Log of a heartbeat cycle run
+entity coach-heartbeat-note sub alh-sensemaking-note,
+    owns coach-date;
+
+# COACH-TREND-NOTE - Narrative trend analysis
+entity coach-trend-note sub alh-analysis-note;
+
+# COACH-APPOINTMENT-PREP-NOTE - Prep instructions for an upcoming appointment
+entity coach-appointment-prep-note sub alh-reporting-note;

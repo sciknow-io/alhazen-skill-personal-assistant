@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "unset VIRTUAL_ENV; export PYTHONWARNINGS=ignore::SyntaxWarning; CORE=$(find ~/.claude/plugins/cache -path '*/alhazen-core/*/alhazen_core.py' 2>/dev/null | head -1); [ -z \"$CORE\" ] && [ -f \"${CLAUDE_PLUGIN_ROOT}/../alhazen-core/alhazen_core.py\" ] && CORE=\"${CLAUDE_PLUGIN_ROOT}/../alhazen-core/alhazen_core.py\"; [ -z \"$CORE\" ] && [ -f \"${CLAUDE_PROJECT_DIR}/.claude/skills/alhazen-core/alhazen_core.py\" ] && CORE=\"${CLAUDE_PROJECT_DIR}/.claude/skills/alhazen-core/alhazen_core.py\"; if [ -z \"$CORE\" ]; then echo \"alhazen-core not found; skipping (install: /plugin install alhazen-core@skillful-alhazen)\" && exit 0; fi; CORE_DIR=$(dirname \"$CORE\"); TYPEDB_DATABASE=alh_personal uv run --project \"$CORE_DIR\" python \"$CORE\" init && TYPEDB_DATABASE=alh_personal uv run --project \"$CORE_DIR\" python \"$CORE\" load-schema \"${CLAUDE_PLUGIN_ROOT}/schema.tql\"",
+            "timeout": 90000
+          }
+        ]
+      }
+    ]
+  }
+}

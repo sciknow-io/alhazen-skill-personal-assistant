@@ -1,0 +1,17 @@
+name: Workout History
+description: Calendar heatmap and workout detail cards
+path: /coach/workouts
+queries:
+  workouts:
+    typeql: |
+      match $w isa coach-workout;
+      fetch {
+        "id": $w.id,
+        "name": $w.name,
+        "type": $w.coach-workout-type,
+        "date": $w.coach-date,
+        "duration_min": $w.coach-duration-min,
+        "distance_mi": $w.coach-distance-mi,
+        "avg_hr": $w.coach-avg-hr,
+        "active_energy_kcal": $w.coach-active-energy-kcal
+      };

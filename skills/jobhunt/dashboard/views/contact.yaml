@@ -1,0 +1,50 @@
+view: contact
+primary_type: jobhunt-contact
+label: "Contact"
+label_plural: "Contacts"
+url_path: /jobhunt/contact/[id]
+nav_parent: hub
+notes: >
+  NOT YET BUILT. jobhunt-contact sub agent sub domain-thing. Reachable from
+  company page via works-at. A Contacts tab would need to be added to hub.yaml.
+  works-at has temporal attrs (valid-from, valid-until) not surfaced here -- add
+  to preview_fields if employment tenure needs to be shown.
+
+browse:
+  label_field: name
+  subtitle_field: contact-role
+  status_field: null
+  status_values: []
+  sort_default: name
+  filter_axis: null
+
+detail:
+  header:
+    title_field: name
+    subtitle_portal: employer
+    status_field: null
+    priority_field: null
+    external_url_field: linkedin-url
+  quick_info:
+    - {field: contact-role,  label: "Role",  icon: User, format: plain}
+    - {field: contact-email, label: "Email", icon: Mail, format: plain}
+  layout: two_column
+  main_column:
+    - kind: notes_group
+      via_relation: aboutness
+      via_role: subject
+      notes_include: [interaction, research, strategy]
+      show_type_icons: true
+      collapsible: false
+  side_column: []
+
+portals:
+  - name: "Employer"
+    kind: preview_card
+    via_relation: works-at
+    via_role: employee
+    target_role: employer
+    target_type: jobhunt-company
+    preview_fields:
+      - {field: name,        label: "Company", format: plain}
+      - {field: company-url, label: "Website", format: external_link}
