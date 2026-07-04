@@ -1,6 +1,6 @@
 {
   "name": "alhazen-personal-assistant",
-  "description": "Personal-assistant Alhazen skills sharing one TypeDB database (alh_personal): job-search pipeline management and personal health/fitness monitoring.",
+  "description": "An executive AI team of Alhazen skills sharing one TypeDB database (alh_personal): research analyst, strategic thought partner, communication expert, operational powerhouse, career graph, health coach, and a chief-of-staff capstone.",
   "homepage": "https://github.com/sciknow-io/alhazen-skill-personal-assistant",
   "owner": {
     "name": "SciKnow.io",
@@ -9,14 +9,39 @@
   "allowCrossMarketplaceDependenciesOn": ["skillful-alhazen"],
   "plugins": [
     {
-      "name": "jobhunt",
-      "source": "./skills/jobhunt",
-      "description": "Track job applications, analyze positions, identify skill gaps, and plan your job search strategy"
+      "name": "analyst",
+      "source": "./skills/analyst",
+      "description": "AI research analyst -- decision-framed research missions, multi-thread wisdom-of-the-crowd consensus, independent verification, and the three-question gate"
+    },
+    {
+      "name": "advisor",
+      "source": "./skills/advisor",
+      "description": "Strategic thought partner -- a board of advisor personas that debate then converge, bias checks, scenario stress-tests, and a decision journal"
+    },
+    {
+      "name": "scribe",
+      "source": "./skills/scribe",
+      "description": "Communication expert -- voice profiles from your best writing, audience personas that review drafts, and dimension-scored feedback loops"
+    },
+    {
+      "name": "ops",
+      "source": "./skills/ops",
+      "description": "Operational powerhouse -- recurring briefs with a manual-before-automate rule, stakeholder CRM with undercurrents, meeting prep, commitments, monitors"
+    },
+    {
+      "name": "career",
+      "source": "./skills/career",
+      "description": "Career graph -- people, collaborators, projects, and potential new positions, plus the opportunity pipeline, skill gaps, and learning plan (pivot of jobhunt)"
     },
     {
       "name": "coach",
       "source": "./skills/coach",
       "description": "Personal health and fitness monitoring -- ingest HealthKit metrics, track goals, surface regressions, manage appointments"
+    },
+    {
+      "name": "chief-of-staff",
+      "source": "./skills/chief-of-staff",
+      "description": "Capstone orchestrator -- read-only cross-view over the whole team: daily agenda, weekly review, and routing between skills"
     }
   ]
 }

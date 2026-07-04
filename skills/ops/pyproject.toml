@@ -1,0 +1,15 @@
+[project]
+name = "alhazen-skill-ops"
+version = "0.1.0"
+description = "Ops skill (operational powerhouse) for the Alhazen knowledge notebook framework"
+requires-python = ">=3.11,<3.14"
+dependencies = [
+    # <3.11 pin: typedb-driver 3.11+ speaks network protocol 8, which the
+    # TypeDB servers this repo runs against (protocol 7) reject.
+    # ops.py get_driver() also handles the 3.11+ DriverOptions API if bumped.
+    "typedb-driver>=3.8.0,<3.11",
+    "pyyaml>=6.0.0",
+]
+
+[dependency-groups]
+dev = []

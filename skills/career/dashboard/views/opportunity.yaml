@@ -1,0 +1,83 @@
+view: opportunity
+primary_type: career-opportunity
+label: "Opportunity"
+label_plural: "Opportunities"
+url_path: /career/opportunity/[id]
+nav_parent: hub
+notes: >
+  Polymorphic base for engagement, venture, lead. The header renders a type
+  badge using subtype metadata (icon, gradient, label). Quick-info has no
+  universal fields; type-specific fields are injected into the Details
+  special_panel from subtypes[].extra_side_fields. Notes are shown in a flat
+  list (no type bucketing, no icons) unlike the position page.
+
+browse:
+  label_field: name
+  subtitle_field: short-name
+  status_field: opportunity-status
+  status_values: [exploring, active, warm, paused, closed]
+  sort_default: name
+  filter_axis: opportunity-status
+
+subtypes:
+  - type_name: career-engagement
+    label: "Consulting Engagement"
+    icon: Briefcase
+    gradient: "from-indigo-400 to-blue-400"
+    extra_side_fields:
+      - {field: engagement-type, label: "Type"}
+      - {field: rate-info,       label: "Rate"}
+  - type_name: career-venture
+    label: "Venture / Advisory"
+    icon: Rocket
+    gradient: "from-purple-400 to-pink-400"
+    extra_side_fields:
+      - {field: venture-stage, label: "Stage"}
+      - {field: equity-type,   label: "Equity"}
+  - type_name: career-lead
+    label: "Networking Lead"
+    icon: Users
+    gradient: "from-emerald-400 to-teal-400"
+    extra_side_fields: []
+
+detail:
+  header:
+    title_field: name
+    subtitle_portal: company
+    status_field: opportunity-status
+    priority_field: priority-level
+    external_url_field: null
+  quick_info: []
+  layout: two_column
+  main_column:
+    - kind: notes_group
+      via_relation: aboutness
+      via_role: subject
+      notes_include: []    # empty = show all note types
+      show_type_icons: false
+      collapsible: false
+  side_column:
+    - kind: special_panel
+      name: "Details"
+      source_note_type: null     # entity attributes directly, not from a note
+      fields: [opportunity-status, deadline]
+      show_content: false
+      # subtype-specific fields injected from subtypes[].extra_side_fields at render time
+
+portals:
+  - name: "Company"
+    kind: preview_card
+    via_relation: career-opportunity-at-organization
+    via_role: opportunity
+    target_role: organization
+    target_type: career-company
+    preview_fields:
+      - {field: name,        label: "Name",    format: plain}
+      - {field: company-url, label: "Website", format: external_link}
+  - name: "Background Reading"
+    kind: linked_list
+    via_relation: career-background-reading
+    via_role: opportunity
+    target_role: reading-material
+    target_type: collection
+    target_view: collection

@@ -1,0 +1,17 @@
+{
+  "name": "chief-of-staff",
+  "display_name": "Chief of Staff",
+  "description": "Read-only cross-view over the executive AI team: daily agenda, weekly review, and orchestration across analyst, advisor, scribe, ops, and career.",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "dependencies": [
+    {
+      "name": "alhazen-core",
+      "marketplace": "skillful-alhazen"
+    },
+    {
+      "name": "typedb-notebook",
+      "marketplace": "skillful-alhazen"
+    }
+  ]
+}

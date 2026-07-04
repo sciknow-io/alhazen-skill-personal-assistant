@@ -1,0 +1,66 @@
+view: person
+primary_type: alh-person
+label: "Person"
+label_plural: "People"
+url_path: /career/person/[id]
+nav_parent: hub
+notes: >
+  People are shared alh-person entities (same database as ops dossiers).
+  Detail data comes from career.py show-person, which aggregates contact
+  roles, collaborations, relationship notes, and borne roles.
+
+browse:
+  label_field: name
+  subtitle_field: description
+  status_field: null
+  status_values: []
+  sort_default: name
+  filter_axis: null
+
+detail:
+  header:
+    title_field: name
+    subtitle_portal: null
+    status_field: null
+    priority_field: null
+    external_url_field: alh-linkedin-url
+  quick_info:
+    - {field: alh-email-address, label: "Email",    icon: Mail,     format: plain}
+    - {field: alh-linkedin-url,  label: "LinkedIn", icon: Linkedin, format: external_link}
+  layout: two_column
+  main_column:
+    - kind: table
+      name: "Collaborations"
+      via_relation: career-collaboration
+      via_role: collaborator
+      target_role: work
+      target_type: career-opportunity
+      columns:
+        - {field: name,                   label: "Project / Opportunity", format: entity_link}
+        - {field: career-collab-role,     label: "Role",                  format: badge}
+        - {field: career-collab-strength, label: "Strength",              format: badge}
+        - {field: career-collab-since,    label: "Since",                 format: date}
+    - kind: table
+      name: "Contact Roles"
+      via_relation: career-contact-for-opportunity
+      via_role: contact
+      target_role: opportunity
+      target_type: career-opportunity
+      columns:
+        - {field: name,                label: "Opportunity", format: entity_link}
+        - {field: career-contact-role, label: "Role",        format: badge}
+  side_column:
+    - kind: notes_group
+      via_relation: aboutness
+      via_role: subject
+      notes_include: [relationship, interaction, research, general]
+      show_type_icons: true
+      collapsible: false
+
+portals:
+  - name: "Roles"
+    kind: linked_list
+    via_relation: alh-role-bearing
+    via_role: bearer
+    target_role: borne-role
+    target_type: career-agent-role

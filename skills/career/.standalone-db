@@ -1,0 +1,2 @@
+# This skill's data lives in the 'alh_personal' TypeDB database, not alh_core.
+# Marker: excluded from core `make db-init`; DB provisioned by this repo's SessionStart hook.

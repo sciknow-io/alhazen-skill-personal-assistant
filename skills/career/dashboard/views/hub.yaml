@@ -1,0 +1,156 @@
+hub: career
+label: "Career Dashboard"
+url_path: /career
+notes: >
+  Stats overview (StatsOverview component) is computed client-side from the
+  pipeline fetch and rendered above the tab bar, always visible.
+  Opportunities, People, Projects and Candidates tabs load lazily on first switch.
+  Global priority and status filters apply only to pipeline and skills tabs.
+
+global_filters:
+  - field: priority-level
+    label: "Priority"
+    values: [all, high, medium, low]
+    applies_to_tabs: [pipeline, skills]
+  - field: application-status
+    label: "Status"
+    values: [all, researching, applied, phone-screen, interviewing, offer, rejected]
+    applies_to_tabs: [pipeline, skills]
+
+stats_component:
+  kind: computed_client_side
+  source_tab: pipeline
+  component: StatsOverview
+  computed_fields:
+    - total
+    - active           # not rejected/withdrawn/offer
+    - applied
+    - interviewing     # phone-screen + interviewing combined
+    - offers
+    - highPriority
+
+tabs:
+  - id: pipeline
+    label: "Pipeline"
+    icon: Kanban
+    kind: view_board
+    entity_view: position
+    board_axis: application-status
+    board_column_order:
+      - researching
+      - applied
+      - phone-screen
+      - interviewing
+      - offer
+      - rejected
+    card_fields: [short-name, name, priority-level]
+    inline_actions:
+      - {label: "Mark as Applied",   sets_field: application-status, value: applied}
+      - {label: "Phone Screen",      sets_field: application-status, value: phone-screen}
+      - {label: "Interviewing",      sets_field: application-status, value: interviewing}
+      - {label: "Received Offer",    sets_field: application-status, value: offer}
+      - {label: "Rejected",          sets_field: application-status, value: rejected}
+      - {label: "Withdraw",          sets_field: application-status, value: withdrawn}
+
+  - id: opportunities
+    label: "Opportunities"
+    icon: Compass
+    kind: view_board
+    entity_view: opportunity
+    board_axis: subtype
+    load: lazy
+    card_fields: [short-name, name, opportunity-status, priority-level, company]
+
+  - id: people
+    label: "People"
+    icon: Users
+    kind: entity_table
+    entity_type: alh-person
+    cli_command: list-people
+    cli_script: career.py
+    load: lazy
+    component: PeopleTable
+    row_link: /career/person/{id}
+    notes: >
+      Output: { people: [{id, name, description, collaborations, contact_roles}] }
+
+  - id: projects
+    label: "Projects"
+    icon: FolderGit2
+    kind: view_board
+    entity_view: project
+    board_axis: career-project-status
+    board_column_order:
+      - exploring
+      - active
+      - paused
+      - shipped
+      - sunset
+    load: lazy
+    component: ProjectsBoard
+    cli_command: list-projects
+    cli_script: career.py
+    card_fields: [short-name, name, career-project-role, career-priority-level, collaborators]
+    notes: >
+      Collaborator chips rendered from the collaborators array returned by
+      list-projects. Output: { projects: [{id, name, short_name, role, status,
+      url, priority, collaborators: [{id, name}]}] }
+    inline_actions:
+      - {label: "Exploring", sets_field: career-project-status, value: exploring}
+      - {label: "Active",    sets_field: career-project-status, value: active}
+      - {label: "Paused",    sets_field: career-project-status, value: paused}
+      - {label: "Shipped",   sets_field: career-project-status, value: shipped}
+      - {label: "Sunset",    sets_field: career-project-status, value: sunset}
+
+  - id: skills
+    label: "Skills Matrix"
+    icon: Target
+    kind: computed_aggregate
+    cli_command: show-gaps
+    cli_script: career.py
+    passthrough_filters: [priority-level]
+    component: SkillsMatrix
+    notes: >
+      Output: { skill_gaps: [{skill, level, your_level, positions: [{id, title}]}] }
+
+  - id: learning
+    label: "Learning Plan"
+    icon: GraduationCap
+    kind: computed_aggregate
+    cli_command: learning-plan
+    cli_script: career.py
+    component: LearningPlan
+    notes: >
+      Output: { learning_plan: [{id, name, type, url, hours, status}],
+      collections: [{id, name, description, skill_name}] }
+      Collections deduplicated by id client-side, aggregating skill_name values.
+
+  - id: candidates
+    label: "Candidates"
+    icon: Search
+    kind: entity_table
+    entity_type: career-candidate
+    cli_command: list-candidates
+    cli_script: career_forager.py
+    cli_args: {status: reviewed}
+    load: lazy
+    component: CandidatesTable
+    actions:
+      - {id: promote, label: "Promote", cli_command: promote, cli_script: career_forager.py,
+         icon: ThumbsUp, on_success: refresh_pipeline}
+      - {id: dismiss, label: "Dismiss", cli_command: triage, cli_script: career_forager.py,
+         cli_args: {action: dismissed}, icon: ThumbsDown, on_success: remove_from_list}
+
+  - id: all-triaged
+    label: "All Triaged"
+    icon: List
+    kind: entity_table
+    entity_type: career-candidate
+    cli_command: list-candidates
+    cli_script: career_forager.py
+    cli_args: {all_triaged: true}
+    load: lazy
+    paginated: true
+    page_size: 25
+    component: CandidatesTable
+    notes: Same CandidatesTable component as Candidates tab but no action buttons.

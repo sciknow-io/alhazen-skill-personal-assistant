@@ -1,0 +1,95 @@
+hub: ops
+label: "Ops Dashboard"
+url_path: /ops
+notes: >
+  Today tab is the default landing view — the morning surface. Briefs shows
+  spec cards with trial progress bars (trial_runs/trial_target) plus produced
+  instances. Stakeholders is the CRM table linking to the stakeholder detail
+  view. Commitments is a board by commitment-status with inline status actions.
+  All tabs are fed by ops.py via lib.ts (gateway-first, execFile fallback).
+
+tabs:
+  - id: today
+    label: "Today"
+    icon: Sunrise
+    kind: computed_aggregate
+    cli_command: today
+    cli_script: ops.py
+    component: TodayPanel
+    notes: >
+      Output: { briefs_due: [...], overdue_commitments: [...],
+      commitments_due_soon: [...], open_commitments: [...],
+      upcoming_meeting_preps: [...], stale_monitors: [...] }.
+      Overdue commitments rendered with warning styling; trial briefs flagged
+      "run manually".
+
+  - id: briefs
+    label: "Briefs"
+    icon: Newspaper
+    kind: computed_aggregate
+    cli_command: list-specs
+    cli_script: ops.py
+    component: SpecsList
+    notes: >
+      Spec cards show status badge (designed/trial/active/retired), cadence,
+      dream-rationale, and a trial progress bar (trial_runs / trial_target).
+      Expanding a spec loads its instances via list-briefs --spec <id>
+      (routes/briefs). Automated instances only appear for active specs —
+      the manual-before-automate rule is enforced by the CLI.
+
+  - id: stakeholders
+    label: "Stakeholders"
+    icon: Users
+    kind: entity_table
+    entity_type: ops-dossier
+    cli_command: list-stakeholders
+    cli_script: ops.py
+    component: StakeholdersTable
+    row_link: /ops/stakeholder/{person_id}
+    columns:
+      - {field: person_name,          label: "Person",          format: link}
+      - {field: relationship,         label: "Relationship",    format: badge}
+      - {field: current_state,        label: "Current State",   format: plain}
+      - {field: last_touchpoint_date, label: "Last Touchpoint", format: date}
+      - {field: open_commitments,     label: "Open",            format: count}
+      - {field: overdue_commitments,  label: "Overdue",         format: count_warning}
+
+  - id: commitments
+    label: "Commitments"
+    icon: Handshake
+    kind: view_board
+    entity_view: commitment
+    cli_command: list-commitments
+    cli_script: ops.py
+    component: CommitmentsBoard
+    board_axis: ops-commitment-status
+    board_column_order:
+      - open
+      - overdue
+      - done
+      - dropped
+    card_fields: [name, person_name, owed_by, due_date]
+    inline_actions:
+      - {label: "Mark Done",    sets_field: ops-commitment-status, value: done}
+      - {label: "Mark Overdue", sets_field: ops-commitment-status, value: overdue}
+      - {label: "Drop",         sets_field: ops-commitment-status, value: dropped}
+      - {label: "Reopen",       sets_field: ops-commitment-status, value: open}
+    notes: >
+      Cards show an owed-by badge (ME in amber / THEM in blue) so both
+      directions of obligation stay visible. Open cards past due render with
+      warning styling even before being explicitly marked overdue.
+
+  - id: monitors
+    label: "Monitors"
+    icon: Radar
+    kind: entity_table
+    entity_type: ops-monitor
+    cli_command: list-monitors
+    cli_script: ops.py
+    columns:
+      - {field: name,         label: "Monitor",      format: plain}
+      - {field: question,     label: "Question",     format: plain}
+      - {field: sources,      label: "Sources",      format: plain}
+      - {field: status,       label: "Status",       format: badge}
+      - {field: last_checked, label: "Last Checked", format: date}
+      - {field: stale,        label: "Stale",        format: boolean_warning}

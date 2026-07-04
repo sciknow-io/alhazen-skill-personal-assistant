@@ -1,0 +1,155 @@
+# =============================================================================
+# ADVISOR NAMESPACE (advsr-) - TypeDB 3.x Schema Extension
+# =============================================================================
+# The strategic thought partner / board of advisors: persona seats that debate
+# then converge, decisions in flight, a personal context system, bias checks,
+# scenario stress-tests, and a decision journal.
+# TypeDB as Claude's "world model" for reasoning about strategic decisions.
+# Namespace prefix: advsr-*
+# =============================================================================
+
+define
+
+# -----------------------------------------------------------------------------
+# ATTRIBUTE TYPES - Advisor Specific
+# -----------------------------------------------------------------------------
+
+# Advisor (persona seat) attributes
+attribute advsr-archetype, value string;        # e.g. operator, financier, contrarian, technologist, people-first
+attribute advsr-decision-style, value string;   # how this persona reasons: first-principles | pattern-matching | risk-first | customer-first | ...
+attribute advsr-pushback-level, value string;   # gentle | firm | relentless
+attribute advsr-inspiration, value string;      # real mentor / public figure whose thinking this seat channels
+attribute advsr-charter, value string;          # what this seat is for (its standing brief)
+attribute advsr-seat-status, value string;      # active | retired
+
+# Decision attributes
+attribute advsr-question, value string;         # the decision question, stated crisply
+attribute advsr-decision-status, value string;  # framing | debating | deciding | decided | reviewed
+attribute advsr-stakes, value string;           # low | medium | high | irreversible
+attribute advsr-operator-style, value string;   # how THIS operator decides: options-menu | bottom-line | pushback-then-space
+attribute advsr-outcome, value string;          # what was decided
+attribute advsr-review-date, value datetime;    # when to revisit the decision
+
+# Context system attributes
+attribute advsr-context-kind, value string;     # role | company | ecosystem | competitive-stance | priorities | past-decision
+
+# Scenario stress-test attributes
+attribute advsr-scenario-condition, value string;   # "market shifts to X", "competitor does Y", "team pushes back on Z"
+attribute advsr-scenario-impact, value string;      # what happens to the decision under this future
+attribute advsr-scenario-likelihood, value string;  # low | medium | high
+
+# Take attributes
+attribute advsr-stance, value string;           # for | against | conditional | reframe
+
+
+# -----------------------------------------------------------------------------
+# RELATION TYPES - defined before entities so role names resolve in plays clauses
+# -----------------------------------------------------------------------------
+
+# SEAT-ON-BOARD - An advisor persona holds a seat on a board (collection)
+relation advsr-seat-on-board,
+    relates advisor,
+    relates board;
+
+# TAKE-BY - Attributes an independent take note to the advisor who wrote it
+relation advsr-take-by,
+    relates take,
+    relates advisor;
+
+# SCENARIO-FOR - Links a scenario stress-test to the decision it tests
+relation advsr-scenario-for,
+    relates scenario,
+    relates decision;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Collections
+# -----------------------------------------------------------------------------
+
+# ADVSR-BOARD - A board of advisors (set of persona seats managed together)
+entity advsr-board sub alh-collection,
+    plays advsr-seat-on-board:board;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Domain Things
+# -----------------------------------------------------------------------------
+
+# ADVSR-ADVISOR - A persona seat on the board of advisors
+# Not a real person: a calibrated thinking style, inspired by mentors the
+# operator had (or wished for) and public figures whose judgment they trust.
+entity advsr-advisor sub alh-domain-thing,
+    owns advsr-archetype,
+    owns advsr-decision-style,
+    owns advsr-pushback-level,
+    owns advsr-inspiration,
+    owns advsr-charter,
+    owns advsr-seat-status,
+    plays advsr-seat-on-board:advisor,
+    plays advsr-take-by:advisor;
+
+# ADVSR-DECISION - A strategic decision in flight
+# Status flow: framing -> debating -> deciding -> decided -> reviewed
+# Notes (primer, interview, takes, debate, bias, journal) attach via alh-aboutness.
+entity advsr-decision sub alh-domain-thing,
+    owns advsr-question,
+    owns advsr-decision-status,
+    owns advsr-stakes,
+    owns advsr-operator-style,
+    owns advsr-outcome,
+    owns advsr-review-date,
+    plays advsr-scenario-for:decision;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Artifacts (personal context system)
+# -----------------------------------------------------------------------------
+
+# ADVSR-CONTEXT-DOC - One entry in the personal context system: role, company,
+# ecosystem, competitive stance, priorities, past decisions and how they turned
+# out. The difference between generic strategy advice and an advisor who has
+# worked with you for years.
+entity advsr-context-doc sub alh-artifact,
+    owns advsr-context-kind;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Fragments (scenario stress-tests)
+# -----------------------------------------------------------------------------
+
+# ADVSR-SCENARIO - A single "what if" future the decision must survive
+entity advsr-scenario sub alh-fragment,
+    owns advsr-scenario-condition,
+    owns advsr-scenario-impact,
+    owns advsr-scenario-likelihood,
+    plays advsr-scenario-for:scenario;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Notes
+# -----------------------------------------------------------------------------
+
+# Operator's messy initial brain dump when opening a decision
+entity advsr-primer-note sub alh-note;
+
+# Agent-led interview: assumptions, unknown-unknowns, missing context
+entity advsr-interview-note sub alh-note;
+
+# One advisor's independent position, written WITHOUT seeing the other takes
+entity advsr-take-note sub alh-note,
+    owns advsr-stance,
+    plays advsr-take-by:take;
+
+# The board debate synthesis: challenge, then CONVERGE on a recommendation
+entity advsr-debate-note sub alh-note;
+
+# Bias check: operator's biases, the AI's biases, positional blind spots
+entity advsr-bias-note sub alh-note;
+
+# Decision journal entry: what was decided, why, and the review record
+entity advsr-journal-note sub alh-note;
+
+
+# =============================================================================
+# END ADVISOR NAMESPACE
+# =============================================================================

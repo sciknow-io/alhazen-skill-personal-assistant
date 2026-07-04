@@ -1,0 +1,417 @@
+# =============================================================================
+# CAREER NOTEBOOK NAMESPACE (career-) - TypeDB 3.x Schema Extension
+# =============================================================================
+# Domain-specific subtypes for career management: the opportunity pipeline
+# plus the career graph (people, collaborators, projects).
+# TypeDB as Claude's "world model" for reasoning about jobs, people, and fit.
+# Namespace prefix: career-*
+# =============================================================================
+
+define
+
+# -----------------------------------------------------------------------------
+# ATTRIBUTE TYPES - Career Specific
+# -----------------------------------------------------------------------------
+
+# URL attributes
+attribute career-job-url, value string;
+attribute career-resource-url, value string;
+
+# Position attributes
+attribute career-short-name, value string;
+attribute career-salary-range, value string;
+attribute career-remote-policy, value string;
+attribute career-team-size, value string;
+
+# Application tracking
+attribute career-applied-date, value datetime;
+attribute career-interview-date, value datetime;
+attribute career-deadline, value datetime;
+attribute career-response-date, value datetime;
+
+# Opportunity model attributes
+attribute career-opportunity-status, value string;
+# Per-type status values:
+#   position: researching, applied, phone-screen, interviewing, offer, rejected, withdrawn
+#   engagement: proposal, active, paused, closed
+#   venture: seed, series-a, series-b, growth, closed
+#   lead: first-contact, active, inactive, closed
+attribute career-engagement-type, value string;      # hourly | project | retainer | advisory
+attribute career-rate-info, value string;            # free text: "$X/hr", "TBD", "equity only"
+attribute career-venture-stage, value string;        # exploring | proposal-sent | negotiating | active | paused | closed
+attribute career-equity-type, value string;          # none | advisor | cofounder | investor
+
+# Skill/requirement attributes
+attribute career-skill-name, value string;
+attribute career-skill-level, value string;
+attribute career-your-level, value string;
+
+# Learning resource attributes
+attribute career-resource-type, value string;
+attribute career-estimated-hours, value integer;
+attribute career-completion-status, value string;
+# Soft cross-database reference to a scilit-paper that lives in the
+# alh_deep_research database (no TypeDB relation can cross databases): the id is
+# resolvable against alh_deep_research; the ref holds a human-readable DOI/title.
+attribute career-cited-paper-id, value string;
+attribute career-cited-paper-ref, value string;
+
+# Contact attributes
+attribute career-contact-role, value string;
+# career-contact-email removed — use alh-email-address on alh-person instead
+
+# Job-seeker role attributes
+attribute career-target-role, value string;
+attribute career-target-industries, value string;
+attribute career-salary-expectations, value string;
+attribute career-location-preference, value string;
+attribute career-search-focus, value string;
+
+# Fit analysis
+attribute career-fit-score, value double;
+attribute career-fit-summary, value string;
+
+# Priority
+attribute career-priority-level, value string;
+
+# Your skill profile attributes
+attribute career-last-updated, value datetime;
+attribute career-skill-evidence, value string;
+attribute career-skill-recency, value string;
+
+# Skill concept vocabulary (SKOS-lite)
+attribute career-alt-label, value string;
+
+# Project attributes (career capital: open-source, papers, products, community)
+attribute career-project-role, value string;        # lead | contributor | advisor
+attribute career-project-status, value string;      # exploring | active | paused | shipped | sunset
+attribute career-project-url, value string;
+
+# Collaboration attributes (people <-> projects/opportunities)
+attribute career-collab-role, value string;         # collaborator | mentor | sponsor | reference | co-author
+attribute career-collab-since, value datetime;
+attribute career-collab-strength, value string;     # weak | working | strong
+
+# Forager attributes (automated job discovery)
+attribute career-board-token, value string;
+attribute career-board-platform, value string;
+attribute career-external-job-id, value string;
+attribute career-discovered-at, value datetime;
+attribute career-relevance-score, value double;
+attribute career-candidate-status, value string;
+attribute career-search-query, value string;
+attribute career-search-location, value string;
+attribute career-triage-reason, value string;
+
+
+# -----------------------------------------------------------------------------
+# RELATION TYPES - defined before entities so role names resolve in plays clauses
+# -----------------------------------------------------------------------------
+
+# OPPORTUNITY-AT-ORGANIZATION - Links any opportunity to an organization
+relation career-opportunity-at-organization,
+    relates opportunity,
+    relates organization;
+
+# POSITION-AT-COMPANY - Links position to employer
+relation career-position-at-company,
+    relates position,
+    relates employer;
+
+# REQUIREMENT-FOR - Links requirements to positions
+relation career-requirement-for,
+    relates requirement,
+    relates position;
+
+# SKILL-DEFINITION - Links seeker skills and requirements to a shared concept
+relation career-skill-definition,
+    relates concept,
+    relates defined-skill;
+
+# SKILL-HIERARCHY - Broader/narrower relations between skill concepts (SKOS-lite)
+relation career-skill-hierarchy,
+    relates broader-skill,
+    relates narrower-skill;
+
+# ADDRESSES-REQUIREMENT - Learning resources that address skill gaps
+relation career-addresses-requirement,
+    owns confidence,
+    relates resource,
+    relates requirement;
+
+# SOURCE-PROVIDES - Links forager candidates to their search source
+relation career-source-provides,
+    relates source,
+    relates candidate;
+
+# SEEKER-PIPELINE - Links a job-seeker role to opportunities in their pipeline
+relation career-seeker-pipeline,
+    relates seeker,
+    relates opportunity;
+
+# SEEKER-HAS-SKILL - Links a job-seeker role to their personal skills
+relation career-seeker-has-skill,
+    relates seeker,
+    relates skill;
+
+# CONTACT-FOR-OPPORTUNITY - A person serving as contact for an opportunity
+# Replaces the career-contact entity type with a relation
+relation career-contact-for-opportunity,
+    owns career-contact-role,
+    relates contact,
+    relates opportunity;
+
+# COLLABORATION - A person collaborating on a project or opportunity.
+# This is the "collaborators" representation of the career graph: mentors,
+# sponsors, references, and co-authors are collaboration roles, not new types.
+relation career-collaboration,
+    owns career-collab-role,
+    owns career-collab-since,
+    owns career-collab-strength,
+    relates collaborator,
+    relates work;
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Career Collections
+# -----------------------------------------------------------------------------
+
+# CAREER-SEARCH - A job search campaign (set of positions being tracked together)
+entity career-search sub alh-collection;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Your Profile
+# -----------------------------------------------------------------------------
+
+# CAREER-AGENT-ROLE - The person's active career role (job-seeking is one mode)
+# BFO/UFO pattern: anti-rigid, externally grounded, bearer-dependent on alh-person
+entity career-agent-role sub alh-role,
+    owns career-target-role,
+    owns career-target-industries,
+    owns career-salary-expectations,
+    owns career-location-preference,
+    owns career-search-focus,
+    plays career-seeker-pipeline:seeker,
+    plays career-seeker-has-skill:seeker;
+
+# CAREER-SKILL-CONCEPT - Controlled vocabulary for skills (SKOS-lite)
+# Canonical concept with preferred label (name), alt-labels, and hierarchy.
+# Both seeker skills and position requirements link to concepts via career-skill-definition.
+entity career-skill-concept sub alh-domain-thing,
+    owns career-alt-label @card(0..),
+    plays career-skill-definition:concept,
+    plays career-skill-hierarchy:broader-skill,
+    plays career-skill-hierarchy:narrower-skill;
+
+# CAREER-YOUR-SKILL - Personal skill/capability for gap analysis
+# Level uses simplified Bloom's taxonomy: none | aware | practiced | expert
+# Evidence: what proves this level (project URL, publication, years of experience)
+# Recency: when last used ("daily 2026", "used 2019-2022", "studied 2024")
+entity career-your-skill sub alh-domain-thing,
+    owns career-skill-name,
+    owns career-skill-level,
+    owns career-skill-evidence,
+    owns career-skill-recency,
+    owns career-last-updated,
+    plays career-seeker-has-skill:skill,
+    plays career-skill-definition:defined-skill;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Career Things
+# -----------------------------------------------------------------------------
+
+# CAREER-SEARCH-SOURCE - A company job board to search (forager)
+entity career-search-source sub alh-domain-thing,
+    owns career-board-token,
+    owns career-board-platform,
+    owns alh-company-url,
+    owns career-search-query,
+    owns career-search-location,
+    plays career-source-provides:source;
+
+# CAREER-CANDIDATE - A discovered job posting (forager, lightweight)
+entity career-candidate sub alh-domain-thing,
+    owns career-job-url,
+    owns career-external-job-id,
+    owns alh-location,
+    owns career-discovered-at,
+    owns career-relevance-score,
+    owns career-candidate-status,
+    owns career-triage-reason,
+    plays career-source-provides:candidate;
+
+# CAREER-COMPANY - An organization in the job search context
+entity career-company sub alh-organization,
+    plays career-position-at-company:employer,
+    plays career-opportunity-at-organization:organization;
+
+# CAREER-OPPORTUNITY - Base supertype for all trackable career opportunities
+entity career-opportunity sub alh-domain-thing,
+    owns career-opportunity-status,
+    owns career-applied-date,
+    owns career-response-date,
+    owns career-priority-level,
+    owns career-deadline,
+    plays career-opportunity-at-organization:opportunity,
+    plays career-seeker-pipeline:opportunity,
+    plays career-contact-for-opportunity:opportunity;
+
+# CAREER-POSITION - A specific role/job posting (formal employment application)
+entity career-position sub career-opportunity,
+    owns career-job-url,
+    owns career-short-name,
+    owns career-salary-range,
+    owns alh-location,
+    owns career-remote-policy,
+    owns career-team-size,
+    plays career-position-at-company:position,
+    plays career-requirement-for:position;
+
+# CAREER-ENGAGEMENT - Paid consulting/service work for a client
+entity career-engagement sub career-opportunity,
+    owns career-short-name,
+    owns career-engagement-type,
+    owns career-rate-info;
+
+# CAREER-VENTURE - Startup/advisory/equity opportunity
+entity career-venture sub career-opportunity,
+    owns career-short-name,
+    owns career-venture-stage,
+    owns career-equity-type;
+
+# CAREER-LEAD - Early-stage networking contact with undefined role
+entity career-lead sub career-opportunity,
+    owns career-short-name;
+
+# CAREER-PROJECT - A body of work (open-source project, paper, product,
+# community effort) that builds career capital
+entity career-project sub career-opportunity,
+    owns career-short-name,
+    owns career-project-role,
+    owns career-project-status,
+    owns career-project-url;
+
+# CAREER-LEARNING-RESOURCE - Course, tutorial, book, etc.
+entity career-learning-resource sub alh-domain-thing,
+    owns career-resource-type,
+    owns career-resource-url,
+    owns career-estimated-hours,
+    owns career-completion-status,
+    owns career-cited-paper-id,
+    owns career-cited-paper-ref,
+    plays career-addresses-requirement:resource;
+
+# NOTE: career-contact entity type removed — use career-contact-for-opportunity relation instead.
+# Contact role and email are now on the relation and alh-person respectively.
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Career Artifacts
+# -----------------------------------------------------------------------------
+
+entity career-job-description sub alh-artifact;
+entity career-resume sub alh-artifact;
+entity career-cover-letter sub alh-artifact;
+entity career-company-page sub alh-artifact;
+entity career-proposal sub alh-artifact;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Career Fragments (extracted from job descriptions)
+# -----------------------------------------------------------------------------
+
+# CAREER-REQUIREMENT - A single requirement extracted from JD
+entity career-requirement sub alh-fragment,
+    owns career-skill-name,
+    owns career-skill-level,
+    owns career-your-level,
+    plays career-requirement-for:requirement,
+    plays career-addresses-requirement:requirement,
+    plays career-skill-definition:defined-skill;
+
+entity career-responsibility sub alh-fragment;
+entity career-qualification sub alh-fragment;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Career Notes
+# -----------------------------------------------------------------------------
+
+entity career-research-note sub alh-note;
+
+entity career-interview-note sub alh-note,
+    owns career-interview-date;
+
+entity career-strategy-note sub alh-note;
+entity career-skill-gap-note sub alh-note;
+
+entity career-fit-analysis-note sub alh-note,
+    owns career-fit-score,
+    owns career-fit-summary;
+
+entity career-interaction-note sub alh-note,
+    owns alh-interaction-type,
+    owns alh-interaction-date;
+
+# Opportunity summary -- one per opportunity, overwritten as facts accumulate.
+# Markdown format with sections (## Company, ## Role, ## Fit, ## Contacts, ## Timeline).
+# This is the primary embedding text for the opportunity map.
+entity career-opp-summary-note sub alh-note;
+
+# Dashboard UI state -- stores map coordinates, filter settings as JSON content.
+# Linked to the nbmem-operator-user via alh-aboutness (note: $state, subject: $operator).
+# Most recent one by created-at is current state. Content is JSON:
+#   { "coordinates": { "opp-id": { "x": 0.5, "y": -0.3 }, ... },
+#     "filters": { "types": ["position","lead"], "statuses": ["researching","applied","interviewing"] } }
+entity career-dashboard-state-note sub alh-note;
+
+# CC brief/feedback notes (added for cold-call workflow)
+entity career-cc-brief-note sub alh-note;
+entity career-cc-feedback-note sub alh-note;
+
+# Learning plan — single note per seeker, periodically overwritten by agent.
+# Contains markdown coaching text generated from gap analysis + seeker context.
+# Linked to seeker role via alh-aboutness.
+entity career-learning-plan-note sub alh-note;
+
+# Relationship note — narrative about a person relationship in career context
+# (how you met, what you owe each other, where the relationship is heading).
+# Linked to the alh-person (and optionally a project/opportunity) via alh-aboutness.
+entity career-relationship-note sub alh-note;
+
+# Primer note — the operator's messy initial brain dump for a new opportunity
+# or project (see docs/operating-principles.md: always capture primers).
+# Linked to the opportunity/project via alh-aboutness.
+entity career-primer-note sub alh-note;
+
+
+# -----------------------------------------------------------------------------
+# CROSS-NAMESPACE EXTENSIONS
+# -----------------------------------------------------------------------------
+
+# Allow paper collections to address skill requirements (bridges scilit <-> career)
+alh-collection plays career-addresses-requirement:resource;
+
+# BACKGROUND-READING - Links paper collections to job opportunities as research context
+relation career-background-reading,
+    owns created-at,
+    owns description,
+    owns provenance,
+    relates opportunity,
+    relates reading-material;
+
+career-opportunity plays career-background-reading:opportunity;
+alh-collection plays career-background-reading:reading-material;
+
+# Person plays contact role in job search context
+entity alh-person plays career-contact-for-opportunity:contact;
+
+# Person collaborates on projects and opportunities (the career graph)
+alh-person plays career-collaboration:collaborator;
+career-opportunity plays career-collaboration:work;
+
+
+# =============================================================================
+# END CAREER NAMESPACE
+# =============================================================================

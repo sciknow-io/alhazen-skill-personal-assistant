@@ -1,0 +1,25 @@
+hub: chief
+label: "Chief of Staff"
+url_path: /chief
+notes: >
+  Single-page cross-skill agenda. One section per team member (ops, advisor,
+  scribe, analyst, career), each rendered from the daily-agenda JSON. Sections
+  whose skill is not installed render an "not installed" placeholder. Each
+  item deep-links into the owning skill's dashboard.
+
+tabs:
+  - id: agenda
+    label: "Daily Agenda"
+    icon: LayoutDashboard
+    kind: computed_aggregate
+    cli_command: daily-agenda
+    cli_script: chief_of_staff.py
+    component: AgendaSections
+    notes: >
+      Output: { ops: {available, open_commitments, active_specs, upcoming_preps},
+      advisor: {available, in_flight, reviews_due},
+      scribe: {available, awaiting_review, in_draft},
+      analyst: {available, pending_gate, running},
+      career: {available, deadlines, active_projects} }
+      Deep links: /ops, /advisor/decision/{id}, /scribe/piece/{id},
+      /analyst/mission/{id}, /career/opportunity/{id}.

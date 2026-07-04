@@ -1,0 +1,100 @@
+# Advisor Skill — Data Quality Checks
+# ====================================
+# Declarative audit rules executed by the audit command in advisor.py.
+# Each check defines a TypeQL query to find violations, a severity,
+# and a root cause analysis with prevention fix.
+# The token {{now}} is replaced with the current UTC timestamp at run time.
+#
+# Run: uv run python skills/advisor/advisor.py audit
+
+skill: advisor
+version: 1
+repo: sciknow-io/alhazen-skill-personal-assistant
+
+checks:
+  # ── Closing the loop ──────────────────────────────────────────
+
+  - name: decided-without-journal
+    category: data-quality
+    severity: high
+    description: "Decided/reviewed decisions with no journal note (what was decided, why, expected results)"
+    find_violations: |
+      match $d isa advsr-decision, has id $id, has name $n, has advsr-decision-status $s;
+      { $s == "decided"; } or { $s == "reviewed"; };
+      not { (note: $j, subject: $d) isa alh-aboutness; $j isa advsr-journal-note; };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $d isa advsr-decision, has id $id, has advsr-decision-status $s;
+      { $s == "decided"; } or { $s == "reviewed"; };
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Write the journal entry retroactively: what was decided, why, expected results. Attach via add-note --type journal or re-run decide with --journal."
+    root_cause:
+      component: script
+      file: advisor.py
+      function: cmd_decide
+      description: "decide allows --journal to be omitted (it only warns), so a decision can reach 'decided' without a journal entry"
+      prevention: "Always pass --journal (or --journal-file) to decide; the SKILL.md workflow makes the journal entry part of step 9"
+      test: "decide without --journal should emit a warning field in its JSON output"
+
+  - name: decided-without-scenarios
+    category: data-quality
+    severity: medium
+    description: "Decided/reviewed decisions that were never stress-tested against alternative futures"
+    find_violations: |
+      match $d isa advsr-decision, has id $id, has name $n, has advsr-decision-status $s;
+      { $s == "decided"; } or { $s == "reviewed"; };
+      not { (scenario: $sc, decision: $d) isa advsr-scenario-for; };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $d isa advsr-decision, has id $id, has advsr-decision-status $s;
+      { $s == "decided"; } or { $s == "reviewed"; };
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Run scenario stress-tests retroactively: add-scenario for market-shift, competitor-move, and internal-pushback futures; reopen the decision with the operator if it only survives the hoped-for future"
+    root_cause:
+      component: prompt
+      file: SKILL.md
+      description: "Scenario stress-tests happen AFTER the operator decides (step 8), so an agent that stops at 'decide' skips them"
+      prevention: "SKILL.md orders the workflow decide -> scenarios -> journal; agents should not consider a decision closed until scenarios exist"
+
+  - name: decisions-without-bias-check
+    category: data-quality
+    severity: medium
+    description: "Decisions at deciding/decided/reviewed with no bias check note"
+    find_violations: |
+      match $d isa advsr-decision, has id $id, has name $n, has advsr-decision-status $s;
+      { $s == "deciding"; } or { $s == "decided"; } or { $s == "reviewed"; };
+      not { (note: $b, subject: $d) isa alh-aboutness; $b isa advsr-bias-note; };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $d isa advsr-decision, has id $id, has advsr-decision-status $s;
+      { $s == "deciding"; } or { $s == "decided"; } or { $s == "reviewed"; };
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Run the three-question bias check (my biases / the AI's biases / what my position hides) and attach it with add-bias-check"
+    root_cause:
+      component: script
+      file: advisor.py
+      function: cmd_decide
+      description: "decide sets status to 'decided' unconditionally, so a decision can bypass the add-bias-check step that normally gates the 'deciding' status"
+      prevention: "Follow the SKILL.md workflow: add-bias-check before presenting options to the operator; the audit flags any decision that skipped it"
+
+  - name: stale-reviews-due
+    category: data-quality
+    severity: high
+    description: "Decided decisions whose review date has passed without a review (the loop never closed)"
+    find_violations: |
+      match $d isa advsr-decision, has id $id, has name $n,
+        has advsr-decision-status "decided", has advsr-review-date $rd;
+      $rd < {{now}};
+      fetch { "id": $id, "name": $n, "review_date": $rd };
+    count_total: |
+      match $d isa advsr-decision, has id $id, has advsr-decision-status "decided";
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Run the review workflow: show-decision, interview the operator on what happened vs expected, review-decision, then feed learnings into a past-decision context doc"
+    root_cause:
+      component: convention
+      description: "Nothing fires on the review date; reviews only happen if someone asks list-decisions --review-due"
+      prevention: "Check list-decisions --review-due at the start of every advisor session (SKILL.md Review Workflow); consider a scheduled trigger that runs it weekly"

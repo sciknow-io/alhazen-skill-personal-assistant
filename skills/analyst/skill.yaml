@@ -1,0 +1,138 @@
+name: analyst
+description: "AI research analyst: decision-framed research missions, multi-thread consensus, independent verification, three-question gate, and deliverables beyond walls of text"
+license: Apache-2.0
+compatibility: "Requires uv and TypeDB 3.x running (alh_personal database)"
+
+# Core files
+scripts:
+  - analyst.py
+typedb_schema: schema.tql
+schema:
+  namespace: anlst
+  depends_on: []
+
+# Dependencies
+requires:
+  bins: [uv]
+  env: [TYPEDB_HOST, TYPEDB_PORT, TYPEDB_DATABASE]
+  optional_env: []
+
+# TypeDB namespaces
+namespaces:
+  - schema.tql
+
+# Design pattern
+pattern: curation
+phases:
+  - briefing: "Capture the operator's primer and decision context"
+  - interviewing: "Agent interviews the operator to surface unknown-unknowns"
+  - planning: "Research plan drafted and operator-approved before execution"
+  - running: "3+ independent parallel research runs, same prompt"
+  - aggregating: "Agent matches claims across runs; consensus recorded"
+  - verifying: "Fresh-thread verification of findings"
+  - gating: "Three-question gate before delivery"
+  - delivering: "Deliverable in the format that will actually get used"
+
+# Core operations
+operations:
+  # Mission lifecycle
+  - create-mission
+  - add-interview
+  - add-plan
+  - update-mission
+  - list-missions
+  - show-mission
+
+  # Parallel runs
+  - add-run
+  - complete-run
+
+  # Findings & evidence
+  - add-finding
+  - link-source
+  - list-findings
+
+  # Consensus, verification, gate
+  - record-consensus
+  - verify-finding
+  - record-gate
+
+  # Output
+  - add-deliverable
+  - report-mission
+
+  # Quality
+  - audit
+
+# Entity types
+entities:
+  things:
+    - anlst-mission
+    - anlst-run
+  artifacts:
+    - anlst-source
+    - anlst-deliverable
+  fragments:
+    - anlst-finding
+  notes:
+    - anlst-primer-note
+    - anlst-interview-note
+    - anlst-plan-note
+    - anlst-verification-note
+    - anlst-gate-note
+    - anlst-synthesis-note
+
+# Status values
+status_values:
+  - briefing
+  - planning
+  - running
+  - aggregating
+  - verifying
+  - gated
+  - delivered
+
+# Priority levels
+priority_levels:
+  - high
+  - medium
+  - low
+
+# Verification statuses
+verification_statuses:
+  - unverified
+  - confirmed
+  - refuted
+  - needs-work
+
+# Deliverable formats
+deliverable_formats:
+  - brief
+  - dashboard
+  - infographic
+  - interactive-page
+  - audio-summary
+
+# Dashboard
+dashboard:
+  enabled: true
+  name: "Analyst Dashboard"
+  url_path: "/analyst"
+  description: "Missions board, consensus matrix, findings triage, gate status, deliverables"
+  views:
+    - name: Missions Board
+      path: /analyst
+      description: "Kanban of missions by mission-status, plus findings and deliverables tabs"
+    - name: Mission Detail
+      path: /analyst/mission/{id}
+      description: "Consensus matrix (findings x runs), verification badges, gate status"
+  internal:
+    pages: dashboard/pages/analyst/
+    components: dashboard/components/
+    api_routes: dashboard/routes/
+    lib: dashboard/lib.ts
+
+# Integration with other skills
+integrates_with:
+  - typedb-notebook
+  - advisor   # soft reference: anlst-decision-ref -> advsr-decision id

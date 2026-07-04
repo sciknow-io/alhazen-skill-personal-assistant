@@ -1,0 +1,73 @@
+hub: advisor
+label: "Advisor Dashboard"
+url_path: /advisor
+notes: >
+  Three tabs: Decisions (kanban by decision-status with stakes badge),
+  Board (advisor roster cards), and Journal (decided/reviewed decisions with
+  review dates; overdue reviews flagged). Decision cards link to the decision
+  detail page at /advisor/decision/[id].
+
+global_filters:
+  - field: stakes
+    label: "Stakes"
+    values: [all, low, medium, high, irreversible]
+    applies_to_tabs: [decisions]
+
+tabs:
+  - id: decisions
+    label: "Decisions"
+    icon: Scale
+    kind: view_board
+    entity_view: decision
+    board_axis: decision-status
+    board_column_order:
+      - framing
+      - debating
+      - deciding
+      - decided
+      - reviewed
+    card_fields: [name, question, stakes, review_date]
+    card_badges:
+      - {field: stakes, label: "Stakes", styles:
+          {low: gray, medium: blue, high: amber, irreversible: red}}
+    component: DecisionsBoard
+    cli_command: list-decisions
+    cli_script: advisor.py
+    notes: >
+      Output: { decisions: [{id, name, question, status, stakes,
+      operator_style, outcome, review_date, review_due, created_at}] }
+
+  - id: board
+    label: "Board"
+    icon: Users
+    kind: entity_cards
+    entity_type: advsr-advisor
+    cli_command: list-advisors
+    cli_script: advisor.py
+    load: lazy
+    component: AdvisorRoster
+    card_fields: [name, archetype, decision_style, pushback, inspiration, charter]
+    notes: >
+      Output: { advisors: [{id, name, archetype, decision_style, pushback,
+      inspiration, charter, status, board}] }
+      Retired seats hidden by default (list-advisors omits them).
+
+  - id: journal
+    label: "Journal"
+    icon: BookOpen
+    kind: entity_table
+    entity_type: advsr-decision
+    cli_command: list-decisions
+    cli_script: advisor.py
+    cli_args: {journal: true}
+    load: lazy
+    component: JournalList
+    columns:
+      - {field: name,        label: "Decision",    format: link_detail}
+      - {field: outcome,     label: "Outcome",     format: plain}
+      - {field: status,      label: "Status",      format: badge}
+      - {field: review_date, label: "Review Date", format: date}
+      - {field: review_due,  label: "Due",         format: warn_flag}
+    notes: >
+      Decided + reviewed decisions only; review_due=true rows highlighted so
+      overdue reviews are unmissable.

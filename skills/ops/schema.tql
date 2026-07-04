@@ -1,0 +1,170 @@
+# =============================================================================
+# OPS NAMESPACE (ops-) - TypeDB 3.x Schema Extension
+# =============================================================================
+# The operational powerhouse: recurring briefs (manual-before-automate),
+# stakeholder CRM with undercurrents, meeting prep, commitments, monitors.
+# TypeDB as Claude's "world model" for operational visibility.
+# Namespace prefix: ops-*
+# =============================================================================
+
+define
+
+# -----------------------------------------------------------------------------
+# ATTRIBUTE TYPES - Ops Specific
+# -----------------------------------------------------------------------------
+
+# Brief spec attributes
+attribute ops-cadence, value string;            # daily | weekdays | weekly | biweekly | monthly | free text
+attribute ops-sections, value string;           # markdown/comma list of brief sections
+attribute ops-sources, value string;            # where the data comes from (connectors, channels, people)
+attribute ops-spec-status, value string;        # designed | trial | active | retired
+attribute ops-trial-runs, value integer;        # manual runs completed so far
+attribute ops-trial-target, value integer;      # manual runs required before promotion (default 7)
+attribute ops-dream-rationale, value string;    # the unlimited-headcount wish this brief fulfils
+
+# Brief instance attributes
+attribute ops-brief-date, value datetime;
+attribute ops-produced-manually, value boolean;
+
+# Dossier attributes (personal CRM - the intangibles no official CRM holds)
+attribute ops-relationship, value string;       # e.g. "board member", "direct report", "key customer"
+attribute ops-current-state, value string;      # where the relationship stands right now
+attribute ops-history-summary, value string;    # how we got here
+
+# Touchpoint attributes
+attribute ops-undercurrent, value string;       # what the transcript won't show: mood, hesitation, looks
+attribute ops-commitments-made, value string;   # raw text of promises made during the interaction
+
+# Meeting prep attributes
+attribute ops-meeting-date, value datetime;
+attribute ops-meeting-title, value string;
+
+# Commitment attributes
+attribute ops-owed-by, value string;            # me | them
+attribute ops-due-date, value datetime;
+attribute ops-commitment-status, value string;  # open | done | dropped | overdue
+
+# Monitor attributes (standing visibility questions)
+attribute ops-question, value string;
+attribute ops-monitor-sources, value string;
+attribute ops-monitor-status, value string;     # active | paused | retired
+attribute ops-last-checked, value datetime;
+
+
+# -----------------------------------------------------------------------------
+# RELATION TYPES - defined before entities so role names resolve in plays clauses
+# -----------------------------------------------------------------------------
+
+# DOSSIER-ABOUT - Links a stakeholder dossier to the person it profiles
+relation ops-dossier-about,
+    relates dossier,
+    relates person;
+
+# TOUCHPOINT-WITH - Links an interaction log entry to the person involved
+relation ops-touchpoint-with,
+    relates touchpoint,
+    relates person;
+
+# PREP-FOR - Links a meeting-prep pack to the person(s) attending
+relation ops-prep-for,
+    relates prep,
+    relates person;
+
+# SPEC-PRODUCED - Links a brief spec to each produced brief instance
+relation ops-spec-produced,
+    relates spec,
+    relates brief;
+
+# COMMITMENT-WITH - Links a commitment to the counterparty person
+relation ops-commitment-with,
+    relates commitment,
+    relates person;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Ops Things
+# -----------------------------------------------------------------------------
+
+# OPS-BRIEF-SPEC - A designed recurring brief/report.
+# Lifecycle (IRON RULE, enforced in ops.py log-brief/promote-spec):
+#   designed -> trial (manual runs only) -> active (automation allowed) -> retired
+entity ops-brief-spec sub alh-domain-thing,
+    owns ops-cadence,
+    owns ops-sections,
+    owns ops-sources,
+    owns ops-spec-status,
+    owns ops-trial-runs,
+    owns ops-trial-target,
+    owns ops-dream-rationale,
+    plays ops-spec-produced:spec;
+
+# OPS-DOSSIER - Stakeholder relationship record (personal CRM)
+entity ops-dossier sub alh-domain-thing,
+    owns ops-relationship,
+    owns ops-current-state,
+    owns ops-history-summary,
+    plays ops-dossier-about:dossier;
+
+# OPS-COMMITMENT - Who owes what by when (harvested from touchpoints)
+entity ops-commitment sub alh-domain-thing,
+    owns ops-owed-by,
+    owns ops-due-date,
+    owns ops-commitment-status,
+    plays ops-commitment-with:commitment;
+
+# OPS-MONITOR - A standing visibility question ("what would I build with
+# unlimited headcount?" answered as a persistent watch)
+entity ops-monitor sub alh-domain-thing,
+    owns ops-question,
+    owns ops-monitor-sources,
+    owns ops-monitor-status,
+    owns ops-last-checked;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Ops Notes
+# -----------------------------------------------------------------------------
+
+# OPS-BRIEF - One produced instance of a brief spec
+entity ops-brief sub alh-note,
+    owns ops-brief-date,
+    owns ops-produced-manually,
+    plays ops-spec-produced:brief;
+
+# OPS-TOUCHPOINT - Interaction log with the undercurrent the transcript won't show
+entity ops-touchpoint sub alh-note,
+    owns alh-interaction-type,
+    owns alh-interaction-date,
+    owns ops-undercurrent,
+    owns ops-commitments-made,
+    plays ops-touchpoint-with:touchpoint;
+
+# OPS-MEETING-PREP - Personalized prep pack written by the agent, reviewed by operator
+entity ops-meeting-prep sub alh-note,
+    owns ops-meeting-date,
+    owns ops-meeting-title,
+    plays ops-prep-for:prep;
+
+# OPS-PRIMER-NOTE - Operator's messy initial brain dump at create time
+entity ops-primer-note sub alh-note;
+
+# OPS-INTERVIEW-NOTE - Record of the agent-interviews-operator step
+entity ops-interview-note sub alh-note;
+
+
+# -----------------------------------------------------------------------------
+# CROSS-NAMESPACE EXTENSIONS
+# -----------------------------------------------------------------------------
+
+# Person plays the person-side roles in the ops CRM
+# (alh-person is shared with the career skill - same database, deliberate synergy)
+entity alh-person
+    plays ops-dossier-about:person,
+    plays ops-touchpoint-with:person,
+    plays ops-prep-for:person,
+    plays ops-commitment-with:person;
+
+
+# =============================================================================
+# END OPS NAMESPACE
+# =============================================================================
