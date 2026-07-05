@@ -72,6 +72,7 @@ Environment:
 import argparse
 import json
 import os
+from pathlib import Path
 import re
 import smtplib
 import sys
@@ -108,7 +109,16 @@ except ImportError:
 # Configuration
 TYPEDB_HOST = os.getenv("TYPEDB_HOST", "localhost")
 TYPEDB_PORT = int(os.getenv("TYPEDB_PORT", "1729"))
-TYPEDB_DATABASE = os.getenv("TYPEDB_DATABASE", "alh_personal")
+# This skill's data lives in alh_personal (see .standalone-db). The marker wins
+# over an ambient TYPEDB_DATABASE so shared runtimes (e.g. the skill gateway,
+# whose global env targets alhazen_notebook) still hit the right database.
+# TYPEDB_DATABASE_OVERRIDE forces a specific database for testing/migration.
+_MARKER_DB = "alh_personal" if (Path(__file__).resolve().parent / ".standalone-db").exists() else None
+TYPEDB_DATABASE = (
+    os.getenv("TYPEDB_DATABASE_OVERRIDE")
+    or _MARKER_DB
+    or os.getenv("TYPEDB_DATABASE", "alh_personal")
+)
 TYPEDB_USERNAME = os.getenv("TYPEDB_USERNAME", "admin")
 TYPEDB_PASSWORD = os.getenv("TYPEDB_PASSWORD", "password")
 

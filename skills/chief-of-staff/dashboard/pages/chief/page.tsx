@@ -90,7 +90,7 @@ export default function ChiefOfStaff() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch('/api/chief/agenda')
+    fetch('/api/chief-of-staff/agenda')
       .then(r => {
         if (!r.ok) throw new Error('Failed to load agenda');
         return r.json();

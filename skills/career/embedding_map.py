@@ -17,12 +17,22 @@ Usage:
 import argparse
 import json
 import os
+from pathlib import Path
 import sys
 import time
 
 TYPEDB_HOST = os.getenv("TYPEDB_HOST", "localhost")
 TYPEDB_PORT = int(os.getenv("TYPEDB_PORT", "1729"))
-TYPEDB_DATABASE = os.getenv("TYPEDB_DATABASE", "alh_personal")
+# This skill's data lives in alh_personal (see .standalone-db). The marker wins
+# over an ambient TYPEDB_DATABASE so shared runtimes (e.g. the skill gateway,
+# whose global env targets alhazen_notebook) still hit the right database.
+# TYPEDB_DATABASE_OVERRIDE forces a specific database for testing/migration.
+_MARKER_DB = "alh_personal" if (Path(__file__).resolve().parent / ".standalone-db").exists() else None
+TYPEDB_DATABASE = (
+    os.getenv("TYPEDB_DATABASE_OVERRIDE")
+    or _MARKER_DB
+    or os.getenv("TYPEDB_DATABASE", "alh_personal")
+)
 QDRANT_HOST = os.getenv("QDRANT_HOST", "localhost")
 QDRANT_PORT = int(os.getenv("QDRANT_PORT", "6333"))
 COLLECTION = "career-opportunities"
@@ -263,49 +273,73 @@ def cmd_map(args):
     except Exception:
         pass
 
-    # Extract vectors and run PyMDE
-    import pymde
-    import torch
+    # Run PyMDE if available. The gateway image deliberately ships without
+    # torch/pymde, so there we serve the layout persisted by the last
+    # host-side `embed-and-map` run instead of recomputing.
+    try:
+        import pymde
+        import torch
+        have_pymde = True
+    except ImportError:
+        have_pymde = False
 
-    vectors = np.array([p.vector for p in filtered])
-    tensor = torch.FloatTensor(vectors)
-
-    # Build initial embedding from cached positions (if available)
-    init = None
-    if seed_coords:
-        init_list = []
-        has_seed = True
+    coord_by_id = {}
+    if not have_pymde:
+        if not seed_coords:
+            print(json.dumps({
+                "success": False,
+                "error": "pymde not installed and no cached layout found -- run 'embedding_map.py embed-and-map' on the host to compute and persist coordinates",
+            }))
+            return
         for p in filtered:
             oid = p.payload["opp_id"]
             if oid in seed_coords:
-                init_list.append(seed_coords[oid])
-            else:
-                has_seed = False
-                break
-        if has_seed and len(init_list) == len(filtered):
-            init = torch.FloatTensor(init_list)
-
-    mde = pymde.preserve_neighbors(
-        tensor,
-        embedding_dim=2,
-        constraint=pymde.Standardized(),
-        repulsive_fraction=0.7,
-        n_neighbors=min(5, len(filtered) - 1),
-        init="quadratic",
-    )
-    # Use cached seed positions as starting point if available
-    if init is not None:
-        embedding_2d = mde.embed(X=init).cpu().numpy()
+                x, y = seed_coords[oid]
+                coord_by_id[oid] = {"x": float(x), "y": float(y)}
+        # Points embedded after the last layout run: park on the rim so they
+        # stay visible until the next host-side embed-and-map refresh.
+        rim = [p for p in filtered if p.payload["opp_id"] not in seed_coords]
+        for i, p in enumerate(rim):
+            coord_by_id[p.payload["opp_id"]] = {"x": 3.0, "y": 3.0 - 0.3 * i}
     else:
-        embedding_2d = mde.embed().cpu().numpy()
+        vectors = np.array([p.vector for p in filtered])
+        tensor = torch.FloatTensor(vectors)
 
-    # Build ID → 2D coordinate map
-    coord_by_id = {}
-    for i, p in enumerate(filtered):
-        coord_by_id[p.payload["opp_id"]] = {
-            "x": float(embedding_2d[i, 0]),
-            "y": float(embedding_2d[i, 1]),
-        }
+        # Build initial embedding from cached positions (if available)
+        init = None
+        if seed_coords:
+            init_list = []
+            has_seed = True
+            for p in filtered:
+                oid = p.payload["opp_id"]
+                if oid in seed_coords:
+                    init_list.append(seed_coords[oid])
+                else:
+                    has_seed = False
+                    break
+            if has_seed and len(init_list) == len(filtered):
+                init = torch.FloatTensor(init_list)
+
+        mde = pymde.preserve_neighbors(
+            tensor,
+            embedding_dim=2,
+            constraint=pymde.Standardized(),
+            repulsive_fraction=0.7,
+            n_neighbors=min(5, len(filtered) - 1),
+            init="quadratic",
+        )
+        # Use cached seed positions as starting point if available
+        if init is not None:
+            embedding_2d = mde.embed(X=init).cpu().numpy()
+        else:
+            embedding_2d = mde.embed().cpu().numpy()
+
+        # Build ID -> 2D coordinate map
+        for i, p in enumerate(filtered):
+            coord_by_id[p.payload["opp_id"]] = {
+                "x": float(embedding_2d[i, 0]),
+                "y": float(embedding_2d[i, 1]),
+            }
 
     # Fetch FRESH metadata from TypeDB (not stale Qdrant payloads)
     from typedb.driver import TransactionType as TxType
@@ -417,7 +451,7 @@ def cmd_embed_and_map(args):
     cmd_map(args)
 
 
-if __name__ == "__main__":
+def main():
     parser = argparse.ArgumentParser(description="Career opportunity embedding map")
     sub = parser.add_subparsers(dest="command")
 
@@ -439,6 +473,10 @@ if __name__ == "__main__":
         cmd_embed_and_map(args)
     else:
         parser.print_help()
+
+
+if __name__ == "__main__":
+    main()
 
 
 # =============================================================================
