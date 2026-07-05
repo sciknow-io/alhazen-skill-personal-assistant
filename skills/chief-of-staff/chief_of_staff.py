@@ -96,8 +96,9 @@ def try_fetch(tx, query: str):
 
 
 def collect_ops(tx):
-    """Open/overdue commitments, active brief specs, upcoming meeting preps."""
-    section = {"available": False, "open_commitments": [], "active_specs": [], "upcoming_preps": []}
+    """Active objectives, overdue work items, open commitments, active brief specs, upcoming preps."""
+    section = {"available": False, "objectives": [], "overdue_items": [],
+               "open_commitments": [], "active_specs": [], "upcoming_preps": []}
     ok, rows = try_fetch(tx, '''match
         $c isa ops-commitment, has ops-commitment-status $s;
         { $s == "open"; } or { $s == "overdue"; };
@@ -107,6 +108,25 @@ def collect_ops(tx):
         return section
     section["available"] = True
     section["open_commitments"] = rows
+
+    # OKR spine: active / at-risk objectives (the primary planning element)
+    _, objectives = try_fetch(tx, '''match
+        $o isa ops-objective, has ops-objective-status $st;
+        { $st == "active"; } or { $st == "at-risk"; };
+    fetch { "id": $o.id, "name": $o.name, "status": $st,
+            "period": $o.ops-objective-period };''')
+    section["objectives"] = objectives
+
+    # Overdue leaf work: target date past, not done/dropped
+    now = now_utc().isoformat()
+    _, overdue = try_fetch(tx, f'''match
+        $w isa ops-workitem, has ops-target-date $d, has ops-workitem-status $s;
+        $d < {json.dumps(now)};
+        not {{ $s == "done"; }};
+        not {{ $s == "dropped"; }};
+    fetch {{ "id": $w.id, "name": $w.name, "status": $s,
+             "kind": $w.ops-workitem-kind, "due": $d }};''')
+    section["overdue_items"] = overdue
 
     _, specs = try_fetch(tx, '''match
         $sp isa ops-brief-spec, has ops-spec-status $st;
@@ -265,6 +285,18 @@ def cmd_report_agenda(args):
 
     ops = a["ops"]
     if ops["available"]:
+        okr_lines = [
+            f"- 🎯 **{o.get('name', o.get('id'))}** — {o.get('status')}"
+            + (f" ({o.get('period')})" if o.get("period") else "")
+            for o in ops.get("objectives", [])
+        ] + [
+            f"- ⚠️ Overdue {w.get('kind', 'item')}: **{w.get('name', w.get('id'))}**"
+            + (f" — was due {str(w.get('due'))[:10]}" if w.get("due") else "")
+            for w in ops.get("overdue_items", [])
+        ]
+        if okr_lines:
+            md += _md_section("Objectives (OKRs)", okr_lines)
+
         lines = [
             f"- ⏰ **{c.get('name', c.get('id'))}** — {c.get('status')}, owed by {c.get('owed_by', '?')}"
             + (f", due {str(c.get('due'))[:10]}" if c.get("due") else "")

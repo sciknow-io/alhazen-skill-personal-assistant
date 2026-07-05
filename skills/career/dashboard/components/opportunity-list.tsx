@@ -35,7 +35,7 @@ const PRIORITY_ORDER: Record<string, number> = {
 
 const STATUS_ORDER: Record<string, number> = {
   // position
-  researching: 0, applied: 1, interviewing: 2, offer: 3, rejected: 4, withdrawn: 5,
+  researching: 0, applied: 1, interviewing: 2, offer: 3, accepted: 4, rejected: 5, withdrawn: 6,
   // engagement
   proposal: 0, /* active: 1, paused: 2, closed: 3 */
   // venture
@@ -67,6 +67,7 @@ const STATUS_COLORS: Record<string, string> = {
   withdrawn: '#5e7387',
   rejected: '#5e7387',
   offer: '#b8c84a',
+  accepted: '#4caf7d',
   // engagement
   proposal: '#d4a843',
   // venture
@@ -101,7 +102,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 // Per-type status pipelines
 const TYPE_STATUSES: Record<string, string[]> = {
-  position: ['researching', 'applied', 'interviewing', 'offer', 'rejected', 'withdrawn'],
+  position: ['researching', 'applied', 'interviewing', 'offer', 'accepted', 'rejected', 'withdrawn'],
   engagement: ['proposal', 'active', 'paused', 'closed'],
   venture: ['seed', 'series-a', 'series-b', 'growth', 'closed'],
   lead: ['first-contact', 'active', 'inactive', 'closed'],

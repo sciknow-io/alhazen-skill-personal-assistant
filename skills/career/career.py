@@ -3200,6 +3200,7 @@ STATUS_EMOJI = {
     "phone-screen": "📞",
     "interviewing": "🎯",
     "offer": "🎉",
+    "accepted": "✅",
     "rejected": "❌",
     "withdrawn": "⏸️",
 }
@@ -3262,7 +3263,7 @@ def cmd_report_pipeline(args):
 
     # Count stats
     total = len(positions)
-    active = sum(1 for p in positions if p["status"] not in ("rejected", "withdrawn", "offer"))
+    active = sum(1 for p in positions if p["status"] not in ("rejected", "withdrawn", "offer", "accepted"))
     applied = sum(1 for p in positions if p["status"] == "applied")
     interviewing = sum(1 for p in positions if p["status"] in ("phone-screen", "interviewing"))
 
@@ -3271,7 +3272,7 @@ def cmd_report_pipeline(args):
     lines.append(f"Total: {total} | Active: {active} | Applied: {applied} | Interviewing: {interviewing}")
     lines.append("")
 
-    status_order = ["interviewing", "phone-screen", "applied", "researching", "offer", "rejected", "withdrawn"]
+    status_order = ["interviewing", "phone-screen", "applied", "researching", "offer", "accepted", "rejected", "withdrawn"]
 
     for status in status_order:
         group = by_status.get(status, [])
@@ -3461,7 +3462,7 @@ def cmd_report_stats(args):
     statuses = [p["status"] for p in positions]
     priorities = [p["priority"] for p in positions]
 
-    active = sum(1 for s in statuses if s not in ("rejected", "withdrawn", "offer"))
+    active = sum(1 for s in statuses if s not in ("rejected", "withdrawn", "offer", "accepted"))
     by_status = {}
     for s in statuses:
         by_status[s] = by_status.get(s, 0) + 1
@@ -3474,7 +3475,7 @@ def cmd_report_stats(args):
     lines.append("")
     lines.append("**By Status:**")
 
-    status_order = ["interviewing", "phone-screen", "applied", "researching", "offer", "rejected", "withdrawn"]
+    status_order = ["interviewing", "phone-screen", "applied", "researching", "offer", "accepted", "rejected", "withdrawn"]
     for s in status_order:
         count = by_status.get(s, 0)
         if count > 0:
@@ -3541,6 +3542,7 @@ def main():
             "phone-screen",
             "interviewing",
             "offer",
+            "accepted",
             "rejected",
             "withdrawn",
         ],

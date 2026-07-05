@@ -158,6 +158,71 @@ stamps the check; monitors unchecked for 7+ days show up as **stale** in `today`
 Monitors follow the same manual-first spirit: answer the question by hand a few
 times before considering any automation.
 
+## OKRs — the primary planning element
+
+Work is planned and executed **through objectives**. An `ops-objective` is a
+primary data element (like a brief spec or a dossier), not a sub-item of another
+skill. Everything else descends from it:
+
+```
+ops-objective            the goal (period, status)           ← PRIMARY
+  └─ ops-key-result      measurable outcome (metric, target-date, current)
+       └─ ops-workitem   execution: kind = story → task → subtask (nests to any depth)
+            └─ ops-commitment   the dated, person-owed leaf (bridged, shows in the daily agenda)
+```
+
+Build a tree top-down: `add-objective` → `add-kr --objective` →
+`add-workitem --kr` (root) or `add-workitem --parent` (nested). Assign an
+`--owner` (an `alh-person`, shared with career) at any level. Bridge a leaf to a
+real commitment with `link-commitment` so "who owes what by when" surfaces in
+`chief-of-staff`. `show-tree --objective` renders the tree with rolled-up
+progress (done leaves / total).
+
+**External data comes in as artifacts, never notes.** Emails, calendar meetings,
+and documents are captured with `add-email` / `add-event` / (docs) and linked to
+the plan as *evidence* (`--evidence-for <id>` or `link-evidence`), and to people
+(`--party` / `--attendee`). The agent's *thinking* about them stays in notes
+(`ops-meeting-prep`, `ops-touchpoint`); the raw external thing is the artifact.
+
+Objectives are standalone; use `--serves <subject-id>` to optionally tie one to a
+`career-project` or an advisor decision.
+
+## Tracker integration — pull-first (Jira / Monday / GitHub)
+
+The team manages the work in their own tracker; **alhazen imports leaf items** so
+your personal OKR view stays honest without double-entry. alhazen is the *why*
+(objectives, KRs, decision context, evidence); the tracker is the *execution*.
+
+The CLI only stores/queries the reference + mapped status — **the agent fetches
+the live item through the provider's MCP server** (GitHub Projects MCP, Atlassian
+Rovo MCP, or the monday Platform MCP) and calls these commands to persist it:
+
+- `import-item --provider github --url <issue-url> --title … --external-id … --external-status "In Progress" --kr <id>`
+  → creates a work item **from** a tracker issue, mapping its status.
+- `link-tracker --workitem <id> --provider … --url … [--external-status …]`
+  → attach an existing work item to a tracker item.
+- `sync-status --workitem <id> --external-status "Done"` → a refresh pull; re-maps
+  status and stamps `ops-last-synced` (provider inferred from the stored link).
+- `list-tracker-links [--provider …]` → downstream check: what's linked, the raw
+  tracker status, and how fresh the sync is.
+
+**Status mapping** (raw → `ops-workitem-status`; unknown → in-progress):
+
+| Provider | not-started | in-progress | blocked | done |
+|---|---|---|---|---|
+| github | Todo / Backlog / (open→in-progress) | In Progress / In Review | Blocked | Done / closed |
+| jira | To Do / Backlog / New | In Progress / In Review | Blocked | Done |
+| monday | Not Started / (blank) | Working on it | Stuck | Done |
+
+**Typical loop:** manage OKR execution in the team tool → periodically ask the
+agent to *pull*: it lists the relevant issues via the tracker MCP, `import-item`s
+new ones under the right KR and `sync-status`es the rest → `show-tree` and
+`chief-of-staff` now reflect real execution. Objectives and KRs stay in
+alhazen (your private framing); only leaf work items carry a tracker link.
+
+Imported items keep a `↗ provider` deep-link in the dashboard with a "synced Nd
+ago" freshness badge.
+
 ## Command Reference
 
 | Command | Purpose | Key flags |
@@ -185,6 +250,22 @@ times before considering any automation.
 | `report-today` | Morning brief (Markdown) | |
 | `add-note` | Primer/interview/general note | `--about --type --content` |
 | `audit` | Quality checks | |
+| `add-objective` | Create an objective (primary) | `--name --period --status --owner --serves --primer` |
+| `add-kr` | Key result under an objective | `--objective --name --metric --baseline --current --status --target-date --owner` |
+| `add-workitem` | story/task/subtask | `--kind --name --kr\|--parent --owner --target-date --order --status` |
+| `update-objective` | Update objective | `--id --status --period --name` |
+| `update-kr` | Update key result | `--id --current --status --target-date` |
+| `update-workitem` | Update work item | `--id --status --name --target-date` |
+| `link-commitment` | Bridge a leaf to a commitment | `--workitem --commitment` |
+| `show-tree` | Objective → KRs → work items + progress | `--objective` |
+| `list-objectives` | List objectives | `--status --serves` |
+| `add-email` | Capture an email (artifact) | `--subject --sent-at --content/-file --uri --party --evidence-for` |
+| `add-event` | Capture a calendar meeting (artifact) | `--title --start --end --content/-file --uri --attendee --evidence-for` |
+| `link-evidence` | Link an artifact to a plan element | `--artifact --subject` |
+| `import-item` | Create a work item FROM a tracker item | `--provider --url --title --external-id --external-status --kind --kr\|--parent` |
+| `link-tracker` | Link an existing work item to a tracker item | `--workitem --provider --url --external-id --external-status` |
+| `sync-status` | Pull a linked item's status from the tracker | `--workitem --external-status [--provider]` |
+| `list-tracker-links` | Linked items + freshness (downstream check) | `--provider` |
 
 ## Data Model
 
@@ -196,6 +277,17 @@ Entities (sub `alh-domain-thing`):
 | `ops-dossier` | ops-relationship, ops-current-state, ops-history-summary |
 | `ops-commitment` | ops-owed-by (me/them), ops-due-date, ops-commitment-status (open/done/dropped/overdue) |
 | `ops-monitor` | ops-question, ops-monitor-sources, ops-monitor-status, ops-last-checked |
+| `ops-objective` | **PRIMARY.** ops-objective-period, ops-objective-status (draft/active/at-risk/met/missed/dropped) |
+| `ops-key-result` | ops-kr-metric, ops-kr-baseline, ops-kr-current, ops-kr-status (on-track/at-risk/off-track/met/missed), ops-target-date |
+| `ops-workitem` | ops-workitem-kind (story/task/subtask), ops-workitem-status (not-started/in-progress/blocked/done/dropped), ops-target-date, ops-order; tracker link: ops-external-provider (github/jira/monday), ops-external-id, ops-external-uri, ops-external-status, ops-last-synced |
+
+Artifacts (sub `alh-artifact`, raw external data):
+
+| Type | Key attributes |
+|---|---|
+| `ops-email` | ops-sent-at, ops-external-uri (+ inherited content) |
+| `ops-calendar-event` | ops-event-start, ops-event-end, ops-meeting-title, ops-external-uri |
+| `ops-external-doc` | ops-external-uri |
 
 Notes (sub `alh-note`):
 
@@ -215,6 +307,14 @@ Relations:
 | `ops-prep-for` | prep ↔ person(s) |
 | `ops-spec-produced` | spec ↔ brief |
 | `ops-commitment-with` | commitment ↔ person |
+| `ops-objective-kr` | objective ↔ key-result |
+| `ops-kr-work` | key-result ↔ workitem (tree root) |
+| `ops-workitem-tree` | parent ↔ child (recursive breakdown) |
+| `ops-workitem-commitment` | workitem ↔ commitment (bridge to the dated leaf) |
+| `ops-owned` | objective/KR/workitem ↔ owner (alh-person) |
+| `ops-objective-serves` | objective ↔ subject (optional soft link, e.g. a career-project) |
+| `ops-evidence` | artifact ↔ subject (email/meeting/doc → a plan element) |
+| `ops-email-party` / `ops-event-attendee` | artifact ↔ person |
 
 IDs are `<type>-<hash12>`. Notes attach to entities via `alh-aboutness`
 (`add-note --about <id>`).

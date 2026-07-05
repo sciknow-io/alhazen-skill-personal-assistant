@@ -137,6 +137,7 @@ const STATUS_COLORS: Record<string, string> = {
   'phone-screen': T.blue,
   interviewing: T.olive,
   offer: T.mint,
+  accepted: T.mint,
   rejected: T.rust,
   withdrawn: T.fgFaint,
 };

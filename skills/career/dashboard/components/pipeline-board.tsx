@@ -36,6 +36,7 @@ const STATUS_ORDER = [
   'phone-screen',
   'interviewing',
   'offer',
+  'accepted',
   'rejected',
 ];
 
@@ -45,6 +46,7 @@ const STATUS_COLORS: Record<string, string> = {
   'phone-screen': 'bg-purple-100 text-purple-800',
   interviewing: 'bg-amber-100 text-amber-800',
   offer: 'bg-green-100 text-green-800',
+  accepted: 'bg-emerald-200 text-emerald-900',
   rejected: 'bg-red-100 text-red-800',
   withdrawn: 'bg-gray-100 text-gray-800',
 };

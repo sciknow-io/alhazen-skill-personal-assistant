@@ -10,7 +10,7 @@ browse:
   subtitle_field: short-name
   status_field: opportunity-status
   status_values:
-    [researching, applied, phone-screen, interviewing, offer, rejected, withdrawn]
+    [researching, applied, phone-screen, interviewing, offer, accepted, rejected, withdrawn]
   sort_default: name
   filter_axis: opportunity-status
 

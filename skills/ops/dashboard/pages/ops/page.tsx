@@ -1,15 +1,17 @@
 'use client';
 
 import { useCallback, useEffect, useState } from 'react';
-import { Sunrise, Newspaper, Users, Handshake, Radar } from 'lucide-react';
+import { Target, Sunrise, Newspaper, Users, Handshake, Radar } from 'lucide-react';
 import { TodayPanel, TodayData, CommitmentItem, MonitorItem } from '@/components/ops/today-panel';
 import { SpecsList, Spec, BriefInstance } from '@/components/ops/specs-list';
 import { StakeholdersTable, StakeholderRow } from '@/components/ops/stakeholders-table';
 import { CommitmentsBoard } from '@/components/ops/commitments-board';
+import { OkrBoard, Objective } from '@/components/ops/okr-board';
 
-type TabId = 'today' | 'briefs' | 'stakeholders' | 'commitments' | 'monitors';
+type TabId = 'okrs' | 'today' | 'briefs' | 'stakeholders' | 'commitments' | 'monitors';
 
 const TABS: Array<{ id: TabId; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+  { id: 'okrs', label: 'OKRs', icon: Target },
   { id: 'today', label: 'Today', icon: Sunrise },
   { id: 'briefs', label: 'Briefs', icon: Newspaper },
   { id: 'stakeholders', label: 'Stakeholders', icon: Users },
@@ -22,7 +24,8 @@ function fmtDate(d: string | null | undefined): string {
 }
 
 export default function OpsHub() {
-  const [activeTab, setActiveTab] = useState<TabId>('today');
+  const [activeTab, setActiveTab] = useState<TabId>('okrs');
+  const [objectives, setObjectives] = useState<Objective[]>([]);
   const [today, setToday] = useState<TodayData | null>(null);
   const [specs, setSpecs] = useState<Spec[]>([]);
   const [stakeholders, setStakeholders] = useState<StakeholderRow[]>([]);
@@ -34,7 +37,11 @@ export default function OpsHub() {
   const loadTab = useCallback(async (tab: TabId) => {
     setLoading(true);
     try {
-      if (tab === 'today') {
+      if (tab === 'okrs') {
+        const res = await fetch('/api/ops/objectives');
+        const data = await res.json();
+        setObjectives(data.objectives || []);
+      } else if (tab === 'today') {
         const res = await fetch('/api/ops/today');
         setToday(await res.json());
       } else if (tab === 'briefs') {
@@ -63,7 +70,7 @@ export default function OpsHub() {
   }, []);
 
   useEffect(() => {
-    loadTab('today');
+    loadTab('okrs');
   }, [loadTab]);
 
   const switchTab = (tab: TabId) => {
@@ -92,7 +99,7 @@ export default function OpsHub() {
     <div className="mx-auto max-w-6xl p-6">
       <h1 className="mb-1 text-2xl font-bold text-slate-800">Ops</h1>
       <p className="mb-4 text-sm text-slate-500">
-        The operational powerhouse: briefs, stakeholder CRM, commitments, monitors.
+        The operational powerhouse: OKRs, briefs, stakeholder CRM, commitments, monitors.
       </p>
 
       <div className="mb-4 flex gap-1 border-b border-slate-200">
@@ -116,6 +123,8 @@ export default function OpsHub() {
         <p className="py-8 text-center text-sm text-slate-400">Loading…</p>
       ) : (
         <>
+          {activeTab === 'okrs' && <OkrBoard objectives={objectives} />}
+
           {activeTab === 'today' && today && <TodayPanel data={today} />}
 
           {activeTab === 'briefs' && <SpecsList specs={specs} onLoadBriefs={loadBriefs} />}

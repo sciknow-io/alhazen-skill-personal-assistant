@@ -2,13 +2,34 @@ hub: ops
 label: "Ops Dashboard"
 url_path: /ops
 notes: >
-  Today tab is the default landing view — the morning surface. Briefs shows
-  spec cards with trial progress bars (trial_runs/trial_target) plus produced
-  instances. Stakeholders is the CRM table linking to the stakeholder detail
-  view. Commitments is a board by commitment-status with inline status actions.
-  All tabs are fed by ops.py via lib.ts (gateway-first, execFile fallback).
+  OKRs is the default landing view — the primary planning surface: objectives,
+  their key results, and the work-item tree beneath each KR. Today is the
+  morning surface. Briefs shows spec cards with trial progress bars
+  (trial_runs/trial_target) plus produced instances. Stakeholders is the CRM
+  table linking to the stakeholder detail view. Commitments is a board by
+  commitment-status with inline status actions. All tabs are fed by ops.py via
+  lib.ts (gateway-first, execFile fallback).
 
 tabs:
+  - id: okrs
+    label: "OKRs"
+    icon: Target
+    kind: view_tree
+    cli_command: [list-objectives, show-tree]
+    cli_script: ops.py
+    component: OkrBoard
+    notes: >
+      list-objectives [--status S] returns { objectives: [{ id, name, status,
+      period }], count }. Each objective card shows a status badge
+      (active=teal, at-risk=amber, draft=slate, met=green, missed/dropped=grey),
+      the period, and a rolled-up progress bar. Expanding a card fetches
+      show-tree --objective <id> (routes/tree/{id}) → { objective, key_results:
+      [{ id, name, status, metric, current, target_date, workitems: [...] }],
+      progress: { done, total, percent } }. Under each KR the work-item tree is
+      rendered as an indented story→task→subtask hierarchy (recursive children)
+      with a per-item status icon (done=green check, in-progress=amber,
+      blocked=red, not-started=slate).
+
   - id: today
     label: "Today"
     icon: Sunrise

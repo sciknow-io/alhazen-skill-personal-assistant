@@ -50,6 +50,31 @@ attribute ops-monitor-sources, value string;
 attribute ops-monitor-status, value string;     # active | paused | retired
 attribute ops-last-checked, value datetime;
 
+# OKR / planning attributes (plans live in ops; OKRs are the PRIMARY planning element)
+attribute ops-objective-period, value string;    # e.g. "2026-Q4", "first-90-days"
+attribute ops-objective-status, value string;    # draft | active | at-risk | met | missed | dropped
+attribute ops-kr-metric, value string;           # measurable definition-of-done
+attribute ops-kr-baseline, value string;         # where the measure starts
+attribute ops-kr-current, value string;          # latest observed value
+attribute ops-kr-status, value string;           # on-track | at-risk | off-track | met | missed
+attribute ops-workitem-kind, value string;       # story | task | subtask
+attribute ops-workitem-status, value string;     # not-started | in-progress | blocked | done | dropped
+attribute ops-target-date, value datetime;       # KR / workitem due date
+attribute ops-order, value integer;              # sibling ordering within a parent
+
+# External-data artifact attributes (emails, calendar meetings, docs come in as artifacts)
+attribute ops-external-uri, value string;        # source URL / message-id / file path
+attribute ops-sent-at, value datetime;           # email sent timestamp
+attribute ops-event-start, value datetime;       # calendar meeting start
+attribute ops-event-end, value datetime;         # calendar meeting end
+
+# Tracker integration (pull-first: the team manages work in Jira/Monday/GitHub;
+# we IMPORT leaf work items for personal OKR planning + downstream checking)
+attribute ops-external-provider, value string;   # github | jira | monday
+attribute ops-external-id, value string;         # issue node-id / key / item-id
+attribute ops-external-status, value string;     # raw status from the tracker (audit)
+attribute ops-last-synced, value datetime;       # when we last pulled this item
+
 
 # -----------------------------------------------------------------------------
 # RELATION TYPES - defined before entities so role names resolve in plays clauses
@@ -80,6 +105,57 @@ relation ops-commitment-with,
     relates commitment,
     relates person;
 
+# --- OKR spine relations (the primary planning structure) ---
+
+# OBJECTIVE-KR - An objective's measurable key results
+relation ops-objective-kr,
+    relates objective,
+    relates key-result;
+
+# KR-WORK - A key result's execution work items (the root of a work tree)
+relation ops-kr-work,
+    relates key-result,
+    relates workitem;
+
+# WORKITEM-TREE - Recursive work breakdown: story -> task -> subtask (arbitrary depth)
+relation ops-workitem-tree,
+    relates parent,
+    relates child;
+
+# WORKITEM-COMMITMENT - Bridge a leaf work item to a dated, person-owed commitment
+relation ops-workitem-commitment,
+    relates item,
+    relates commitment;
+
+# OWNED - Any planning element -> the person accountable for it
+relation ops-owned,
+    relates item,
+    relates owner;
+
+# OBJECTIVE-SERVES - Optional soft link from an objective to what it serves
+# (e.g. a career-project or an advisor decision). Objectives are standalone;
+# this link is optional context, not required.
+relation ops-objective-serves,
+    relates objective,
+    relates subject;
+
+# --- External-data relations (emails / meetings attach to the plan and to people) ---
+
+# EVIDENCE - An external artifact -> the planning element it pertains to
+relation ops-evidence,
+    relates artifact,
+    relates subject;
+
+# EMAIL-PARTY - An email artifact -> a correspondent (sender/recipient)
+relation ops-email-party,
+    relates email,
+    relates person;
+
+# EVENT-ATTENDEE - A calendar-event artifact -> an attendee
+relation ops-event-attendee,
+    relates event,
+    relates person;
+
 
 # -----------------------------------------------------------------------------
 # ENTITY TYPES - Ops Things
@@ -105,12 +181,14 @@ entity ops-dossier sub alh-domain-thing,
     owns ops-history-summary,
     plays ops-dossier-about:dossier;
 
-# OPS-COMMITMENT - Who owes what by when (harvested from touchpoints)
+# OPS-COMMITMENT - Who owes what by when (harvested from touchpoints, or the
+# dated leaf of a work item via ops-workitem-commitment)
 entity ops-commitment sub alh-domain-thing,
     owns ops-owed-by,
     owns ops-due-date,
     owns ops-commitment-status,
-    plays ops-commitment-with:commitment;
+    plays ops-commitment-with:commitment,
+    plays ops-workitem-commitment:commitment;
 
 # OPS-MONITOR - A standing visibility question ("what would I build with
 # unlimited headcount?" answered as a persistent watch)
@@ -119,6 +197,73 @@ entity ops-monitor sub alh-domain-thing,
     owns ops-monitor-sources,
     owns ops-monitor-status,
     owns ops-last-checked;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - OKR spine (PRIMARY planning elements; plans live in ops)
+# -----------------------------------------------------------------------------
+
+# OPS-OBJECTIVE - The primary data element. Work is planned and executed THROUGH
+# objectives; everything below (key results, work items, commitments) descends
+# from one. Standalone by default; optionally serves an external subject.
+entity ops-objective sub alh-domain-thing,
+    owns ops-objective-period,
+    owns ops-objective-status,
+    plays ops-objective-kr:objective,
+    plays ops-owned:item,
+    plays ops-objective-serves:objective;
+
+# OPS-KEY-RESULT - A measurable outcome under an objective
+entity ops-key-result sub alh-domain-thing,
+    owns ops-kr-metric,
+    owns ops-kr-baseline,
+    owns ops-kr-current,
+    owns ops-kr-status,
+    owns ops-target-date,
+    plays ops-objective-kr:key-result,
+    plays ops-kr-work:key-result,
+    plays ops-owned:item;
+
+# OPS-WORKITEM - Recursive execution breakdown under a key result:
+# story -> task -> subtask (kind attribute; arbitrary depth via ops-workitem-tree)
+entity ops-workitem sub alh-domain-thing,
+    owns ops-workitem-kind,
+    owns ops-workitem-status,
+    owns ops-target-date,
+    owns ops-order,
+    owns ops-external-provider,
+    owns ops-external-id,
+    owns ops-external-uri,
+    owns ops-external-status,
+    owns ops-last-synced,
+    plays ops-kr-work:workitem,
+    plays ops-workitem-tree:parent,
+    plays ops-workitem-tree:child,
+    plays ops-workitem-commitment:item,
+    plays ops-owned:item;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - External data as artifacts (raw captured content, never authored)
+# -----------------------------------------------------------------------------
+
+# OPS-EMAIL - A captured email (inherits plays ops-evidence:artifact from alh-artifact)
+entity ops-email sub alh-artifact,
+    owns ops-sent-at,
+    owns ops-external-uri,
+    plays ops-email-party:email;
+
+# OPS-CALENDAR-EVENT - A captured calendar meeting
+entity ops-calendar-event sub alh-artifact,
+    owns ops-event-start,
+    owns ops-event-end,
+    owns ops-meeting-title,
+    owns ops-external-uri,
+    plays ops-event-attendee:event;
+
+# OPS-EXTERNAL-DOC - Any other external document / data pulled in
+entity ops-external-doc sub alh-artifact,
+    owns ops-external-uri;
 
 
 # -----------------------------------------------------------------------------
@@ -156,13 +301,29 @@ entity ops-interview-note sub alh-note;
 # CROSS-NAMESPACE EXTENSIONS
 # -----------------------------------------------------------------------------
 
-# Person plays the person-side roles in the ops CRM
+# Person plays the person-side roles in the ops CRM, OKR ownership, and external data
 # (alh-person is shared with the career skill - same database, deliberate synergy)
 entity alh-person
     plays ops-dossier-about:person,
     plays ops-touchpoint-with:person,
     plays ops-prep-for:person,
-    plays ops-commitment-with:person;
+    plays ops-commitment-with:person,
+    plays ops-owned:owner,
+    plays ops-email-party:person,
+    plays ops-event-attendee:person;
+
+# Any identifiable entity can be the subject an objective serves (career-project,
+# advisor decision, etc.) - a soft, optional cross-namespace link.
+entity alh-identifiable-entity
+    plays ops-objective-serves:subject;
+
+# Evidence connects any external artifact to any domain-thing it pertains to
+# (declared on the base types so generic ops-evidence links type-check - the
+# same broad shape as alh-aboutness for notes).
+entity alh-artifact
+    plays ops-evidence:artifact;
+entity alh-domain-thing
+    plays ops-evidence:subject;
 
 
 # =============================================================================

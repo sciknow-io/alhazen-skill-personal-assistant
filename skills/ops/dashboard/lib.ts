@@ -94,3 +94,13 @@ export async function listMonitors(status?: string) {
   if (status) args.push('--status', status);
   return runOps(args);
 }
+
+// ── OKRs ─────────────────────────────────────────────────────────────────
+
+export async function listObjectives(status?: string) {
+  return runOps(['list-objectives', ...(status ? ['--status', status] : [])]);
+}
+
+export async function showObjectiveTree(objectiveId: string) {
+  return runOps(['show-tree', '--objective', objectiveId]);
+}

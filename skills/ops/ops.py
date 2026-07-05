@@ -98,6 +98,10 @@ TYPEDB_PASSWORD = os.getenv("TYPEDB_PASSWORD", "password")
 SPEC_STATUSES = ["designed", "trial", "active", "retired"]
 COMMITMENT_STATUSES = ["open", "done", "dropped", "overdue"]
 MONITOR_STATUSES = ["active", "paused", "retired"]
+OBJECTIVE_STATUSES = ["draft", "active", "at-risk", "met", "missed", "dropped"]
+KR_STATUSES = ["on-track", "at-risk", "off-track", "met", "missed"]
+WORKITEM_KINDS = ["story", "task", "subtask"]
+WORKITEM_STATUSES = ["not-started", "in-progress", "blocked", "done", "dropped"]
 DEFAULT_TRIAL_TARGET = 7
 STALE_MONITOR_DAYS = 7
 UPCOMING_PREP_DAYS = 7
@@ -1358,6 +1362,495 @@ def cmd_audit(args):
 
 
 # =============================================================================
+# OKR SPINE - objectives (primary), key results, work items, evidence
+# =============================================================================
+
+
+def _link(driver, query: str):
+    """Run a single write query in its own transaction and commit."""
+    with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+        tx.query(query).resolve()
+        tx.commit()
+
+
+def link_owned(driver, item_id: str, person_id: str):
+    """Link any planning element to its accountable person via ops-owned."""
+    _link(driver, f'''match
+        $i isa alh-identifiable-entity, has id "{item_id}";
+        $p isa alh-person, has id "{person_id}";
+    insert (item: $i, owner: $p) isa ops-owned;''')
+
+
+def cmd_add_objective(args):
+    """Create an objective - the PRIMARY planning element."""
+    status = args.status or "draft"
+    oid = generate_id("objective")
+    query = f'''insert $o isa ops-objective,
+        has id "{oid}",
+        has name "{escape_string(args.name)}",
+        has ops-objective-status "{status}",
+        has created-at {get_timestamp()}'''
+    if args.period:
+        query += f', has ops-objective-period "{escape_string(args.period)}"'
+    if args.description:
+        query += f', has description "{escape_string(args.description)}"'
+    query += ";"
+
+    with get_driver() as driver:
+        owner = None
+        if args.owner:
+            with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+                owner = resolve_person(tx, args.owner)
+            if not owner:
+                print(json.dumps({"success": False, "error": f"Person not found: {args.owner}"}))
+                return
+        _link(driver, query)
+        if owner:
+            link_owned(driver, oid, owner["id"])
+        if args.serves:
+            _link(driver, f'''match
+                $o isa ops-objective, has id "{oid}";
+                $s isa alh-identifiable-entity, has id "{escape_string(args.serves)}";
+            insert (objective: $o, subject: $s) isa ops-objective-serves;''')
+        primer = getattr(args, "primer", None)
+        if primer:
+            add_primer_note(driver, oid, primer)
+
+    print(json.dumps({
+        "success": True, "objective_id": oid, "name": args.name,
+        "status": status, "owner": owner["name"] if owner else None,
+        "serves": args.serves,
+    }))
+
+
+def cmd_add_kr(args):
+    """Add a measurable key result under an objective."""
+    status = args.status or "on-track"
+    kid = generate_id("kr")
+    query = f'''insert $k isa ops-key-result,
+        has id "{kid}",
+        has name "{escape_string(args.name)}",
+        has ops-kr-status "{status}",
+        has created-at {get_timestamp()}'''
+    if args.metric:
+        query += f', has ops-kr-metric "{escape_string(args.metric)}"'
+    if args.baseline:
+        query += f', has ops-kr-baseline "{escape_string(args.baseline)}"'
+    if args.current:
+        query += f', has ops-kr-current "{escape_string(args.current)}"'
+    if args.target_date:
+        query += f', has ops-target-date {parse_date(args.target_date)}'
+    query += ";"
+
+    with get_driver() as driver:
+        # verify objective exists
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            obj = fetch_one(tx, f'match $o isa ops-objective, has id "{escape_string(args.objective)}"; fetch {{ "id": $o.id }};')
+        if not obj:
+            print(json.dumps({"success": False, "error": f"Objective not found: {args.objective}"}))
+            return
+        owner = None
+        if args.owner:
+            with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+                owner = resolve_person(tx, args.owner)
+            if not owner:
+                print(json.dumps({"success": False, "error": f"Person not found: {args.owner}"}))
+                return
+        _link(driver, query)
+        _link(driver, f'''match
+            $o isa ops-objective, has id "{escape_string(args.objective)}";
+            $k isa ops-key-result, has id "{kid}";
+        insert (objective: $o, key-result: $k) isa ops-objective-kr;''')
+        if owner:
+            link_owned(driver, kid, owner["id"])
+
+    print(json.dumps({"success": True, "key_result_id": kid, "objective_id": args.objective, "name": args.name}))
+
+
+def cmd_add_workitem(args):
+    """Add a story/task/subtask under a key result (--kr) or another work item (--parent)."""
+    if not args.kr and not args.parent:
+        print(json.dumps({"success": False, "error": "Provide --kr (root work item) or --parent (nested)"}))
+        return
+    status = args.status or "not-started"
+    wid = generate_id("workitem")
+    query = f'''insert $w isa ops-workitem,
+        has id "{wid}",
+        has name "{escape_string(args.name)}",
+        has ops-workitem-kind "{args.kind}",
+        has ops-workitem-status "{status}",
+        has created-at {get_timestamp()}'''
+    if args.description:
+        query += f', has description "{escape_string(args.description)}"'
+    if args.target_date:
+        query += f', has ops-target-date {parse_date(args.target_date)}'
+    if args.order is not None:
+        query += f', has ops-order {args.order}'
+    query += ";"
+
+    with get_driver() as driver:
+        owner = None
+        if args.owner:
+            with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+                owner = resolve_person(tx, args.owner)
+            if not owner:
+                print(json.dumps({"success": False, "error": f"Person not found: {args.owner}"}))
+                return
+        _link(driver, query)
+        if args.kr:
+            _link(driver, f'''match
+                $k isa ops-key-result, has id "{escape_string(args.kr)}";
+                $w isa ops-workitem, has id "{wid}";
+            insert (key-result: $k, workitem: $w) isa ops-kr-work;''')
+        if args.parent:
+            _link(driver, f'''match
+                $p isa ops-workitem, has id "{escape_string(args.parent)}";
+                $c isa ops-workitem, has id "{wid}";
+            insert (parent: $p, child: $c) isa ops-workitem-tree;''')
+        if owner:
+            link_owned(driver, wid, owner["id"])
+
+    print(json.dumps({"success": True, "workitem_id": wid, "kind": args.kind, "name": args.name,
+                      "kr": args.kr, "parent": args.parent}))
+
+
+def cmd_update_objective(args):
+    """Update an objective's status / period / name."""
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            if args.status:
+                replace_attr(tx, "ops-objective", args.id, "ops-objective-status", f'"{args.status}"')
+            if args.period:
+                replace_attr(tx, "ops-objective", args.id, "ops-objective-period", f'"{escape_string(args.period)}"')
+            if args.name:
+                replace_attr(tx, "ops-objective", args.id, "name", f'"{escape_string(args.name)}"')
+            tx.commit()
+    print(json.dumps({"success": True, "objective_id": args.id, "status": args.status}))
+
+
+def cmd_update_kr(args):
+    """Update a key result's current value / status / target date."""
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            if args.current:
+                replace_attr(tx, "ops-key-result", args.id, "ops-kr-current", f'"{escape_string(args.current)}"')
+            if args.status:
+                replace_attr(tx, "ops-key-result", args.id, "ops-kr-status", f'"{args.status}"')
+            if args.target_date:
+                replace_attr(tx, "ops-key-result", args.id, "ops-target-date", parse_date(args.target_date))
+            tx.commit()
+    print(json.dumps({"success": True, "key_result_id": args.id, "current": args.current, "status": args.status}))
+
+
+def cmd_update_workitem(args):
+    """Update a work item's status / name / target date."""
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            if args.status:
+                replace_attr(tx, "ops-workitem", args.id, "ops-workitem-status", f'"{args.status}"')
+            if args.name:
+                replace_attr(tx, "ops-workitem", args.id, "name", f'"{escape_string(args.name)}"')
+            if args.target_date:
+                replace_attr(tx, "ops-workitem", args.id, "ops-target-date", parse_date(args.target_date))
+            tx.commit()
+    print(json.dumps({"success": True, "workitem_id": args.id, "status": args.status}))
+
+
+def cmd_link_commitment(args):
+    """Bridge a leaf work item to a dated, person-owed ops-commitment."""
+    with get_driver() as driver:
+        _link(driver, f'''match
+            $w isa ops-workitem, has id "{escape_string(args.workitem)}";
+            $c isa ops-commitment, has id "{escape_string(args.commitment)}";
+        insert (item: $w, commitment: $c) isa ops-workitem-commitment;''')
+    print(json.dumps({"success": True, "workitem_id": args.workitem, "commitment_id": args.commitment}))
+
+
+def _workitem_children(tx, wid: str):
+    rows = list(tx.query(f'''match
+        $p isa ops-workitem, has id "{wid}";
+        (parent: $p, child: $c) isa ops-workitem-tree;
+        $c has id $id, has name $n, has ops-workitem-kind $k, has ops-workitem-status $s;
+    fetch {{ "id": $id, "name": $n, "kind": $k, "status": $s,
+             "provider": $c.ops-external-provider, "uri": $c.ops-external-uri,
+             "last_synced": $c.ops-last-synced }};''').resolve())
+    return rows
+
+
+def _build_workitem_tree(tx, wid: str, counts: dict):
+    children = []
+    for row in _workitem_children(tx, wid):
+        counts["total"] += 1
+        if row.get("status") == "done":
+            counts["done"] += 1
+        row["children"] = _build_workitem_tree(tx, row["id"], counts)
+        children.append(row)
+    return children
+
+
+def cmd_show_tree(args):
+    """Render an objective -> key results -> work item tree with rolled-up progress."""
+    oid = escape_string(args.objective)
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            obj = fetch_one(tx, f'''match $o isa ops-objective, has id "{oid}", has name $n;
+                fetch {{ "id": $o.id, "name": $n, "status": $o.ops-objective-status, "period": $o.ops-objective-period }};''')
+            if not obj:
+                print(json.dumps({"success": False, "error": f"Objective not found: {args.objective}"}))
+                return
+            counts = {"total": 0, "done": 0}
+            krs = []
+            kr_rows = list(tx.query(f'''match
+                $o isa ops-objective, has id "{oid}";
+                (objective: $o, key-result: $k) isa ops-objective-kr;
+                $k has id $id, has name $n;
+            fetch {{ "id": $id, "name": $n, "status": $k.ops-kr-status,
+                     "metric": $k.ops-kr-metric, "current": $k.ops-kr-current,
+                     "target_date": $k.ops-target-date }};''').resolve())
+            for kr in kr_rows:
+                roots = list(tx.query(f'''match
+                    $k isa ops-key-result, has id "{kr['id']}";
+                    (key-result: $k, workitem: $w) isa ops-kr-work;
+                    $w has id $id, has name $n, has ops-workitem-kind $kind, has ops-workitem-status $s;
+                fetch {{ "id": $id, "name": $n, "kind": $kind, "status": $s,
+                         "provider": $w.ops-external-provider, "uri": $w.ops-external-uri,
+                         "last_synced": $w.ops-last-synced }};''').resolve())
+                for r in roots:
+                    counts["total"] += 1
+                    if r.get("status") == "done":
+                        counts["done"] += 1
+                    r["children"] = _build_workitem_tree(tx, r["id"], counts)
+                kr["workitems"] = roots
+                krs.append(kr)
+
+    pct = round(100 * counts["done"] / counts["total"]) if counts["total"] else 0
+    print(json.dumps({
+        "success": True, "objective": obj, "key_results": krs,
+        "progress": {"done": counts["done"], "total": counts["total"], "percent": pct},
+    }, default=str))
+
+
+def cmd_list_objectives(args):
+    """List objectives (optionally filtered by status or the subject they serve)."""
+    match = 'match $o isa ops-objective, has id $id, has name $n'
+    if getattr(args, "status", None):
+        match += f', has ops-objective-status "{args.status}"'
+    if getattr(args, "serves", None):
+        match += f'; (objective: $o, subject: $s) isa ops-objective-serves; $s has id "{escape_string(args.serves)}"'
+    q = (match + '; fetch { "id": $id, "name": $n, "status": $o.ops-objective-status, '
+         '"period": $o.ops-objective-period };')
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            rows = list(tx.query(q).resolve())
+    print(json.dumps({"success": True, "objectives": rows, "count": len(rows)}, default=str))
+
+
+# =============================================================================
+# EXTERNAL DATA - emails, calendar meetings, docs as artifacts
+# =============================================================================
+
+
+def _link_evidence(driver, artifact_id: str, subject_id: str):
+    _link(driver, f'''match
+        $a isa alh-artifact, has id "{artifact_id}";
+        $s isa alh-domain-thing, has id "{subject_id}";
+    insert (artifact: $a, subject: $s) isa ops-evidence;''')
+
+
+def cmd_add_email(args):
+    """Capture an email as an artifact; link correspondents and (optionally) evidence."""
+    eid = generate_id("email")
+    content = resolve_content(args)
+    query = f'''insert $e isa ops-email,
+        has id "{eid}",
+        has name "{escape_string(args.subject)}",
+        has created-at {get_timestamp()}'''
+    if content:
+        query += f', has content "{escape_string(content)}"'
+    if args.sent_at:
+        query += f', has ops-sent-at {parse_date(args.sent_at)}'
+    if args.uri:
+        query += f', has ops-external-uri "{escape_string(args.uri)}"'
+    query += ";"
+    with get_driver() as driver:
+        _link(driver, query)
+        parties = []
+        for ident in (args.party or []):
+            with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+                p = resolve_person(tx, ident)
+            if p:
+                _link(driver, f'''match $e isa ops-email, has id "{eid}"; $p isa alh-person, has id "{p['id']}";
+                    insert (email: $e, person: $p) isa ops-email-party;''')
+                parties.append(p["name"])
+        if args.evidence_for:
+            _link_evidence(driver, eid, escape_string(args.evidence_for))
+    print(json.dumps({"success": True, "email_id": eid, "subject": args.subject,
+                      "parties": parties, "evidence_for": args.evidence_for}))
+
+
+def cmd_add_event(args):
+    """Capture a calendar meeting as an artifact; link attendees and (optionally) evidence."""
+    vid = generate_id("event")
+    content = resolve_content(args)
+    query = f'''insert $v isa ops-calendar-event,
+        has id "{vid}",
+        has name "{escape_string(args.title)}",
+        has ops-meeting-title "{escape_string(args.title)}",
+        has created-at {get_timestamp()}'''
+    if content:
+        query += f', has content "{escape_string(content)}"'
+    if args.start:
+        query += f', has ops-event-start {parse_date(args.start)}'
+    if args.end:
+        query += f', has ops-event-end {parse_date(args.end)}'
+    if args.uri:
+        query += f', has ops-external-uri "{escape_string(args.uri)}"'
+    query += ";"
+    with get_driver() as driver:
+        _link(driver, query)
+        attendees = []
+        for ident in (args.attendee or []):
+            with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+                p = resolve_person(tx, ident)
+            if p:
+                _link(driver, f'''match $v isa ops-calendar-event, has id "{vid}"; $p isa alh-person, has id "{p['id']}";
+                    insert (event: $v, person: $p) isa ops-event-attendee;''')
+                attendees.append(p["name"])
+        if args.evidence_for:
+            _link_evidence(driver, vid, escape_string(args.evidence_for))
+    print(json.dumps({"success": True, "event_id": vid, "title": args.title,
+                      "attendees": attendees, "evidence_for": args.evidence_for}))
+
+
+def cmd_link_evidence(args):
+    """Link an existing external artifact to a planning element as evidence."""
+    with get_driver() as driver:
+        _link_evidence(driver, escape_string(args.artifact), escape_string(args.subject))
+    print(json.dumps({"success": True, "artifact_id": args.artifact, "subject_id": args.subject}))
+
+
+# =============================================================================
+# TRACKER INTEGRATION (pull-first) — the team manages work in Jira/Monday/GitHub;
+# we IMPORT leaf items into ops for personal OKR planning + downstream checking.
+# ops.py only stores/queries the reference + mapped status; the AGENT fetches the
+# live item via the provider's MCP server and calls these commands to persist.
+# =============================================================================
+
+TRACKER_PROVIDERS = ["github", "jira", "monday"]
+
+# Raw tracker status -> ops-workitem-status. Case-insensitive; unknown -> in-progress.
+_STATUS_MAP = {
+    "github": {"open": "in-progress", "closed": "done", "todo": "not-started",
+               "backlog": "not-started", "in progress": "in-progress",
+               "in review": "in-progress", "done": "done", "blocked": "blocked"},
+    "jira":   {"to do": "not-started", "backlog": "not-started", "new": "not-started",
+               "selected for development": "not-started", "in progress": "in-progress",
+               "in review": "in-progress", "indeterminate": "in-progress",
+               "done": "done", "blocked": "blocked"},
+    "monday": {"": "not-started", "not started": "not-started", "working on it": "in-progress",
+               "stuck": "blocked", "done": "done"},
+}
+
+
+def map_status(provider, raw):
+    """Map a raw tracker status to the ops-workitem-status enum."""
+    if raw is None:
+        return None
+    return _STATUS_MAP.get(provider, {}).get(str(raw).strip().lower(), "in-progress")
+
+
+def _stored_provider(driver, wid):
+    with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+        r = fetch_one(tx, f'match $w isa ops-workitem, has id "{wid}", has ops-external-provider $p; fetch {{ "p": $p }};')
+    return r["p"] if r else None
+
+
+def cmd_import_item(args):
+    """Create a NEW work item FROM a tracker item — the pull-into-alhazen path."""
+    if not args.kr and not args.parent:
+        print(json.dumps({"success": False, "error": "Provide --kr or --parent to attach the imported item"}))
+        return
+    kind = args.kind or "task"
+    status = map_status(args.provider, args.external_status) if args.external_status else "not-started"
+    wid = generate_id("workitem")
+    q = f'''insert $w isa ops-workitem,
+        has id "{wid}",
+        has name "{escape_string(args.title)}",
+        has ops-workitem-kind "{kind}",
+        has ops-workitem-status "{status}",
+        has ops-external-provider "{args.provider}",
+        has ops-external-uri "{escape_string(args.url)}",
+        has ops-last-synced {get_timestamp()}'''
+    if args.external_id:
+        q += f', has ops-external-id "{escape_string(args.external_id)}"'
+    if args.external_status:
+        q += f', has ops-external-status "{escape_string(args.external_status)}"'
+    q += ";"
+    with get_driver() as driver:
+        _link(driver, q)
+        if args.kr:
+            _link(driver, f'''match $k isa ops-key-result, has id "{escape_string(args.kr)}";
+                $w isa ops-workitem, has id "{wid}";
+            insert (key-result: $k, workitem: $w) isa ops-kr-work;''')
+        if args.parent:
+            _link(driver, f'''match $p isa ops-workitem, has id "{escape_string(args.parent)}";
+                $c isa ops-workitem, has id "{wid}";
+            insert (parent: $p, child: $c) isa ops-workitem-tree;''')
+    print(json.dumps({"success": True, "workitem_id": wid, "provider": args.provider,
+                      "status": status, "uri": args.url, "title": args.title}))
+
+
+def cmd_link_tracker(args):
+    """Attach an EXISTING work item to a tracker item (records the reference; maps status if given)."""
+    wid = escape_string(args.workitem)
+    mapped = map_status(args.provider, args.external_status) if args.external_status else None
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            replace_attr(tx, "ops-workitem", wid, "ops-external-provider", f'"{args.provider}"')
+            replace_attr(tx, "ops-workitem", wid, "ops-external-uri", f'"{escape_string(args.url)}"')
+            if args.external_id:
+                replace_attr(tx, "ops-workitem", wid, "ops-external-id", f'"{escape_string(args.external_id)}"')
+            if args.external_status:
+                replace_attr(tx, "ops-workitem", wid, "ops-external-status", f'"{escape_string(args.external_status)}"')
+                replace_attr(tx, "ops-workitem", wid, "ops-workitem-status", f'"{mapped}"')
+            replace_attr(tx, "ops-workitem", wid, "ops-last-synced", get_timestamp())
+            tx.commit()
+    print(json.dumps({"success": True, "workitem_id": args.workitem, "provider": args.provider,
+                      "uri": args.url, "status": mapped}))
+
+
+def cmd_sync_status(args):
+    """Refresh a linked work item's status from the tracker (a pull)."""
+    wid = escape_string(args.workitem)
+    with get_driver() as driver:
+        provider = args.provider or _stored_provider(driver, wid) or "github"
+        mapped = map_status(provider, args.external_status)
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            replace_attr(tx, "ops-workitem", wid, "ops-external-status", f'"{escape_string(args.external_status)}"')
+            if mapped:
+                replace_attr(tx, "ops-workitem", wid, "ops-workitem-status", f'"{mapped}"')
+            replace_attr(tx, "ops-workitem", wid, "ops-last-synced", get_timestamp())
+            tx.commit()
+    print(json.dumps({"success": True, "workitem_id": args.workitem, "provider": provider,
+                      "external_status": args.external_status, "status": mapped}))
+
+
+def cmd_list_tracker_links(args):
+    """List work items linked to a tracker (downstream checking / audit)."""
+    match = 'match $w isa ops-workitem, has id $id, has name $n, has ops-external-uri $uri'
+    if getattr(args, "provider", None):
+        match += f', has ops-external-provider "{args.provider}"'
+    q = (match + ', has ops-external-provider $prov; fetch { "id": $id, "name": $n, '
+         '"provider": $prov, "uri": $uri, "status": $w.ops-workitem-status, '
+         '"external_status": $w.ops-external-status, "external_id": $w.ops-external-id, '
+         '"last_synced": $w.ops-last-synced };')
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            rows = list(tx.query(q).resolve())
+    print(json.dumps({"success": True, "links": rows, "count": len(rows)}, default=str))
+
+
+# =============================================================================
 # MAIN
 # =============================================================================
 
@@ -1510,6 +2003,116 @@ def main():
     # audit
     subparsers.add_parser("audit", help="Run quality checks from quality-checks.yaml")
 
+    # --- OKR spine (plans live in ops; objectives are the primary element) ---
+    p = subparsers.add_parser("add-objective", help="Create an objective (primary planning element)")
+    p.add_argument("--name", required=True, help="Objective statement")
+    p.add_argument("--description", help="Longer description")
+    p.add_argument("--period", help="Timeframe, e.g. 2026-Q4 or first-90-days")
+    p.add_argument("--status", choices=OBJECTIVE_STATUSES, help="Status (default draft)")
+    p.add_argument("--owner", help="Accountable person (id or name)")
+    p.add_argument("--serves", help="Optional subject id this objective serves (e.g. a career-project)")
+    p.add_argument("--primer", help="Operator's messy brain dump, stored as a primer note")
+
+    p = subparsers.add_parser("add-kr", help="Add a measurable key result under an objective")
+    p.add_argument("--objective", required=True, help="Objective ID")
+    p.add_argument("--name", required=True, help="Key result statement")
+    p.add_argument("--metric", help="Measurable definition-of-done")
+    p.add_argument("--baseline", help="Starting value")
+    p.add_argument("--current", help="Latest observed value")
+    p.add_argument("--status", choices=KR_STATUSES, help="Status (default on-track)")
+    p.add_argument("--target-date", help="Target date (YYYY-MM-DD)")
+    p.add_argument("--owner", help="Accountable person (id or name)")
+
+    p = subparsers.add_parser("add-workitem", help="Add a story/task/subtask under a KR or work item")
+    p.add_argument("--kind", required=True, choices=WORKITEM_KINDS, help="story | task | subtask")
+    p.add_argument("--name", required=True, help="Work item title")
+    p.add_argument("--description", help="Longer description")
+    p.add_argument("--kr", help="Parent key result ID (for a root work item)")
+    p.add_argument("--parent", help="Parent work item ID (for nesting)")
+    p.add_argument("--status", choices=WORKITEM_STATUSES, help="Status (default not-started)")
+    p.add_argument("--owner", help="Accountable person (id or name)")
+    p.add_argument("--target-date", help="Target date (YYYY-MM-DD)")
+    p.add_argument("--order", type=int, help="Sibling ordering")
+
+    p = subparsers.add_parser("update-objective", help="Update an objective")
+    p.add_argument("--id", required=True)
+    p.add_argument("--status", choices=OBJECTIVE_STATUSES)
+    p.add_argument("--period")
+    p.add_argument("--name")
+
+    p = subparsers.add_parser("update-kr", help="Update a key result")
+    p.add_argument("--id", required=True)
+    p.add_argument("--current")
+    p.add_argument("--status", choices=KR_STATUSES)
+    p.add_argument("--target-date")
+
+    p = subparsers.add_parser("update-workitem", help="Update a work item")
+    p.add_argument("--id", required=True)
+    p.add_argument("--status", choices=WORKITEM_STATUSES)
+    p.add_argument("--name")
+    p.add_argument("--target-date")
+
+    p = subparsers.add_parser("link-commitment", help="Bridge a work item to an ops-commitment")
+    p.add_argument("--workitem", required=True)
+    p.add_argument("--commitment", required=True)
+
+    p = subparsers.add_parser("show-tree", help="Render objective -> KRs -> work items with rolled-up progress")
+    p.add_argument("--objective", required=True)
+
+    p = subparsers.add_parser("list-objectives", help="List objectives")
+    p.add_argument("--status", choices=OBJECTIVE_STATUSES)
+    p.add_argument("--serves", help="Filter to objectives serving this subject id")
+
+    # --- External data as artifacts (emails, calendar meetings, docs) ---
+    p = subparsers.add_parser("add-email", help="Capture an email as an artifact")
+    p.add_argument("--subject", required=True, help="Email subject (name)")
+    p.add_argument("--sent-at", help="Sent date (YYYY-MM-DD)")
+    p.add_argument("--content", help="Email body (inline)")
+    p.add_argument("--content-file", help="Path to file with the email body")
+    p.add_argument("--uri", help="Source URI / message-id")
+    p.add_argument("--party", nargs="*", help="Correspondent person id(s) or name(s)")
+    p.add_argument("--evidence-for", help="Planning element id this email is evidence for")
+
+    p = subparsers.add_parser("add-event", help="Capture a calendar meeting as an artifact")
+    p.add_argument("--title", required=True, help="Meeting title (name)")
+    p.add_argument("--start", help="Start (YYYY-MM-DD)")
+    p.add_argument("--end", help="End (YYYY-MM-DD)")
+    p.add_argument("--content", help="Notes/agenda (inline)")
+    p.add_argument("--content-file", help="Path to file with agenda/notes")
+    p.add_argument("--uri", help="Source URI / event-id")
+    p.add_argument("--attendee", nargs="*", help="Attendee person id(s) or name(s)")
+    p.add_argument("--evidence-for", help="Planning element id this meeting is evidence for")
+
+    p = subparsers.add_parser("link-evidence", help="Link an external artifact to a planning element")
+    p.add_argument("--artifact", required=True)
+    p.add_argument("--subject", required=True)
+
+    # --- Tracker integration (pull-first: import from Jira/Monday/GitHub) ---
+    p = subparsers.add_parser("import-item", help="Create a work item FROM a tracker item (pull into alhazen)")
+    p.add_argument("--provider", required=True, choices=TRACKER_PROVIDERS)
+    p.add_argument("--url", required=True, help="Tracker item URL")
+    p.add_argument("--title", required=True, help="Item title")
+    p.add_argument("--external-id", help="Tracker id (issue node-id / key / item-id)")
+    p.add_argument("--external-status", help="Raw status from the tracker")
+    p.add_argument("--kind", choices=WORKITEM_KINDS, help="story|task|subtask (default task)")
+    p.add_argument("--kr", help="Attach under this key result")
+    p.add_argument("--parent", help="Attach under this work item")
+
+    p = subparsers.add_parser("link-tracker", help="Link an existing work item to a tracker item")
+    p.add_argument("--workitem", required=True)
+    p.add_argument("--provider", required=True, choices=TRACKER_PROVIDERS)
+    p.add_argument("--url", required=True)
+    p.add_argument("--external-id")
+    p.add_argument("--external-status")
+
+    p = subparsers.add_parser("sync-status", help="Refresh a linked work item's status from the tracker")
+    p.add_argument("--workitem", required=True)
+    p.add_argument("--external-status", required=True, help="Raw status pulled from the tracker")
+    p.add_argument("--provider", choices=TRACKER_PROVIDERS, help="Override; else uses the stored provider")
+
+    p = subparsers.add_parser("list-tracker-links", help="List work items linked to a tracker")
+    p.add_argument("--provider", choices=TRACKER_PROVIDERS)
+
     args = parser.parse_args()
 
     if not TYPEDB_AVAILABLE:
@@ -1549,6 +2152,25 @@ def main():
         "report-today": cmd_report_today,
         "add-note": cmd_add_note,
         "audit": cmd_audit,
+        # OKR spine (plans live in ops; objectives are the primary element)
+        "add-objective": cmd_add_objective,
+        "add-kr": cmd_add_kr,
+        "add-workitem": cmd_add_workitem,
+        "update-objective": cmd_update_objective,
+        "update-kr": cmd_update_kr,
+        "update-workitem": cmd_update_workitem,
+        "link-commitment": cmd_link_commitment,
+        "show-tree": cmd_show_tree,
+        "list-objectives": cmd_list_objectives,
+        # External data as artifacts
+        "add-email": cmd_add_email,
+        "add-event": cmd_add_event,
+        "link-evidence": cmd_link_evidence,
+        # Tracker integration (pull-first)
+        "import-item": cmd_import_item,
+        "link-tracker": cmd_link_tracker,
+        "sync-status": cmd_sync_status,
+        "list-tracker-links": cmd_list_tracker_links,
     }
 
     try:

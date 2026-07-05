@@ -24,7 +24,7 @@ export function StatsOverview({ positions }: StatsOverviewProps) {
   const stats = {
     total: positions.length,
     active: positions.filter(
-      (p) => !['rejected', 'withdrawn', 'offer'].includes(p.status)
+      (p) => !['rejected', 'withdrawn', 'offer', 'accepted'].includes(p.status)
     ).length,
     applied: positions.filter((p) => p.status === 'applied').length,
     interviewing: positions.filter(

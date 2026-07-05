@@ -32,7 +32,7 @@ attribute career-response-date, value datetime;
 # Opportunity model attributes
 attribute career-opportunity-status, value string;
 # Per-type status values:
-#   position: researching, applied, phone-screen, interviewing, offer, rejected, withdrawn
+#   position: researching, applied, phone-screen, interviewing, offer, accepted, rejected, withdrawn
 #   engagement: proposal, active, paused, closed
 #   venture: seed, series-a, series-b, growth, closed
 #   lead: first-contact, active, inactive, closed

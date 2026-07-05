@@ -726,7 +726,9 @@ uv run python .claude/skills/career/career.py update-status \
     --date "2025-02-05"
 ```
 
-**Status values:** `researching` | `applied` | `phone-screen` | `interviewing` | `offer` | `rejected` | `withdrawn`
+**Status values:** `researching` | `applied` | `phone-screen` | `interviewing` | `offer` | `accepted` | `rejected` | `withdrawn`
+
+(`accepted` marks an offer you have accepted — the terminal "won" state for a position.)
 
 ### Add Notes
 

@@ -14,7 +14,7 @@ global_filters:
     applies_to_tabs: [pipeline, skills]
   - field: application-status
     label: "Status"
-    values: [all, researching, applied, phone-screen, interviewing, offer, rejected]
+    values: [all, researching, applied, phone-screen, interviewing, offer, accepted, rejected]
     applies_to_tabs: [pipeline, skills]
 
 stats_component:
