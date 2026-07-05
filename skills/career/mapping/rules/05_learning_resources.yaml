@@ -1,0 +1,37 @@
+name: learning_resources
+description: Map jhunt-learning-resource to career-learning-resource
+depends_on: []
+idempotent: true
+skolem_prefix: resource
+skolem_keys: [id]
+datetime_attrs: [created-at]
+source_match: |
+  match
+    $s isa jhunt-learning-resource;
+  fetch {
+    "id": $s.id,
+    "name": $s.name,
+    "rtype": $s.jhunt-resource-type,
+    "url": $s.jhunt-resource-url,
+    "hours": $s.jhunt-estimated-hours,
+    "completion": $s.jhunt-completion-status,
+    "paper_id": $s.jhunt-cited-paper-id,
+    "paper_ref": $s.jhunt-cited-paper-ref,
+    "created": $s.created-at
+  };
+target_check: |
+  match $x isa career-learning-resource, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-learning-resource,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has name $name;
+optional_attrs:
+  rtype: career-resource-type
+  url: career-resource-url
+  hours: career-estimated-hours
+  completion: career-completion-status
+  paper_id: career-cited-paper-id
+  paper_ref: career-cited-paper-ref
+  created: created-at

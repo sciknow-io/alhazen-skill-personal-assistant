@@ -1,0 +1,41 @@
+name: candidates
+description: Map jhunt-candidate to career-candidate
+depends_on: []
+idempotent: true
+skolem_prefix: candidate
+skolem_keys: [id]
+datetime_attrs: [created-at, career-discovered-at]
+source_match: |
+  match
+    $s isa jhunt-candidate;
+  fetch {
+    "id": $s.id,
+    "name": $s.name,
+    "description": $s.description,
+    "job_url": $s.jhunt-job-url,
+    "external_id": $s.jhunt-external-job-id,
+    "location": $s.alh-location,
+    "discovered": $s.jhunt-discovered-at,
+    "relevance": $s.jhunt-relevance-score,
+    "cstatus": $s.jhunt-candidate-status,
+    "triage": $s.jhunt-triage-reason,
+    "created": $s.created-at
+  };
+target_check: |
+  match $x isa career-candidate, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-candidate,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has name $name;
+optional_attrs:
+  description: description
+  job_url: career-job-url
+  external_id: career-external-job-id
+  location: alh-location
+  discovered: career-discovered-at
+  relevance: career-relevance-score
+  cstatus: career-candidate-status
+  triage: career-triage-reason
+  created: created-at

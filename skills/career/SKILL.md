@@ -1098,16 +1098,24 @@ docker compose up -d dashboard
 
 ## 16. Migration from jobhunt
 
-The career skill is the pivot of the former **jobhunt** skill. The schema rename (`jhunt-*` → `career-*`) orphans any legacy `jhunt-*` instance data in an existing `alh_personal` database. A one-shot migration command copies legacy instances into their `career-*` equivalents:
+The career skill is the pivot of the former **jobhunt** skill. The schema rename (`jhunt-*` → `career-*`) orphans any legacy `jhunt-*` instance data in an existing `alh_personal` database. The migration is defined declaratively as **GLAV mapping rules** in `mapping/rules/` (same framework and rule format as the dismech mapping in skillful-alhazen — `source_match` fetch → `target_insert`, with foreign keys resolved through the `career-legacy-id` natural key recorded on every migrated copy). See `mapping/README.md` for the rule catalog.
 
 ```bash
+# Convenience wrapper (delegates to the bundled runner):
+uv run python .claude/skills/career/career.py migrate-from-jobhunt --dry-run
 uv run python .claude/skills/career/career.py migrate-from-jobhunt
+
+# Or run the rules directly (schema_mapper-compatible CLI):
+uv run python .claude/skills/career/mapping/glav_runner.py run \
+    --source-db alh_personal --target-db alh_personal \
+    --rules-dir .claude/skills/career/mapping/rules --dry-run
 ```
 
-- If legacy `jhunt-*` types exist in the DB, their instances (companies, opportunities, skills, notes, artifacts, forager data, the job-seeker role) are copied into `career-*` types with fresh ids, and the key relations (company links, pipeline, requirements, contacts, aboutness, role-bearing) are re-created between the copies.
-- If no legacy types exist (fresh install), the command reports a clean no-op.
-- Legacy data is left in place — verify the `career-*` copies, then clean up manually. Tags on legacy entities are not copied.
-- `jhunt-job-seeker-role` becomes `career-agent-role` (all attributes preserved).
+- Prerequisite: the career schema (including `career-legacy-id`) is loaded into the database — the SessionStart hook does this.
+- Phase 1-3 rules copy entities (companies, opportunities, skills, concepts, sources, candidates, resources, requirements, artifacts, notes, the seeker role → `career-agent-role`) with fresh skolem ids + `career-legacy-id`. Phase 4 rules rebuild relations (company links, pipeline, requirements, skill hierarchy, forager links, aboutness, artifact representation) between the copies by matching legacy ids.
+- Idempotent: reruns skip rows whose `career-legacy-id` already exists in the target (`target_check`).
+- If no legacy types exist (fresh install), every rule reports a clean no-op.
+- Legacy data is left in place — verify the `career-*` copies (compare counts per type against the rule report), then clean up manually. Tags on legacy entities are not copied.
 
 ---
 

@@ -1,0 +1,23 @@
+name: representation
+description: Re-link migrated job-description artifacts to their positions via alh-representation
+depends_on: [job_descriptions, positions]
+idempotent: true
+source_match: |
+  match
+    (alh-artifact: $a, referent: $p) isa alh-representation; $a isa jhunt-job-description;
+  fetch {
+    "artifact_id": $a.id,
+    "referent_id": $p.id
+  };
+target_check: |
+  match
+    $ta isa career-job-description, has career-legacy-id $artifact_id;
+    $tp isa career-opportunity, has career-legacy-id $referent_id;
+    (alh-artifact: $ta, referent: $tp) isa alh-representation;
+  fetch { "x": 1 };
+target_insert: |
+  match
+    $ta isa career-job-description, has career-legacy-id $artifact_id;
+    $tp isa career-opportunity, has career-legacy-id $referent_id;
+  insert
+    (alh-artifact: $ta, referent: $tp) isa alh-representation;

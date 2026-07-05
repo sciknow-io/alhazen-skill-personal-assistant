@@ -1,0 +1,23 @@
+name: skill_hierarchy
+description: Rebuild broader/narrower links between skill concepts
+depends_on: [skill_concepts]
+idempotent: true
+source_match: |
+  match
+    (broader-skill: $b, narrower-skill: $n) isa jhunt-skill-hierarchy;
+  fetch {
+    "broader_id": $b.id,
+    "narrower_id": $n.id
+  };
+target_check: |
+  match
+    $tb isa career-skill-concept, has career-legacy-id $broader_id;
+    $tn isa career-skill-concept, has career-legacy-id $narrower_id;
+    (broader-skill: $tb, narrower-skill: $tn) isa career-skill-hierarchy;
+  fetch { "x": 1 };
+target_insert: |
+  match
+    $tb isa career-skill-concept, has career-legacy-id $broader_id;
+    $tn isa career-skill-concept, has career-legacy-id $narrower_id;
+  insert
+    (broader-skill: $tb, narrower-skill: $tn) isa career-skill-hierarchy;

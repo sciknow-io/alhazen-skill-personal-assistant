@@ -1,0 +1,23 @@
+name: requirement_for
+description: Rebuild requirement-for links
+depends_on: [requirements, positions]
+idempotent: true
+source_match: |
+  match
+    (requirement: $r, position: $p) isa jhunt-requirement-for;
+  fetch {
+    "requirement_id": $r.id,
+    "position_id": $p.id
+  };
+target_check: |
+  match
+    $tr isa career-requirement, has career-legacy-id $requirement_id;
+    $tp isa career-position, has career-legacy-id $position_id;
+    (requirement: $tr, position: $tp) isa career-requirement-for;
+  fetch { "x": 1 };
+target_insert: |
+  match
+    $tr isa career-requirement, has career-legacy-id $requirement_id;
+    $tp isa career-position, has career-legacy-id $position_id;
+  insert
+    (requirement: $tr, position: $tp) isa career-requirement-for;

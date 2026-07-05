@@ -1,0 +1,31 @@
+name: interaction_notes
+description: Map jhunt-interaction-note to career-interaction-note
+depends_on: []
+idempotent: true
+skolem_prefix: note
+skolem_keys: [id]
+datetime_attrs: [created-at, alh-interaction-date]
+source_match: |
+  match
+    $s isa jhunt-interaction-note;
+  fetch {
+    "id": $s.id,
+    "content": $s.content,
+    "name": $s.name,
+    "created": $s.created-at,
+    "itype": $s.alh-interaction-type,
+    "idate": $s.alh-interaction-date
+  };
+target_check: |
+  match $x isa career-interaction-note, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-interaction-note,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has content $content;
+optional_attrs:
+  name: name
+  created: created-at
+  itype: alh-interaction-type
+  idate: alh-interaction-date

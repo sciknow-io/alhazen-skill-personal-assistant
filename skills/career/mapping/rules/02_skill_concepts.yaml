@@ -1,0 +1,29 @@
+name: skill_concepts
+description: Map jhunt-skill-concept to career-skill-concept
+depends_on: []
+idempotent: true
+skolem_prefix: concept
+skolem_keys: [id]
+datetime_attrs: [created-at]
+source_match: |
+  match
+    $s isa jhunt-skill-concept;
+  fetch {
+    "id": $s.id,
+    "name": $s.name,
+    "description": $s.description,
+    "created": $s.created-at,
+    "alt_labels": [ $s.jhunt-alt-label ]
+  };
+target_check: |
+  match $x isa career-skill-concept, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-skill-concept,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has name $name;
+optional_attrs:
+  description: description
+  created: created-at
+  alt_labels: career-alt-label

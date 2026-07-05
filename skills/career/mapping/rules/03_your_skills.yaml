@@ -1,0 +1,33 @@
+name: your_skills
+description: Map jhunt-your-skill to career-your-skill
+depends_on: []
+idempotent: true
+skolem_prefix: skill
+skolem_keys: [id]
+datetime_attrs: [career-last-updated]
+source_match: |
+  match
+    $s isa jhunt-your-skill;
+  fetch {
+    "id": $s.id,
+    "skill_name": $s.jhunt-skill-name,
+    "level": $s.jhunt-skill-level,
+    "evidence": $s.jhunt-skill-evidence,
+    "recency": $s.jhunt-skill-recency,
+    "updated": $s.jhunt-last-updated,
+    "description": $s.description
+  };
+target_check: |
+  match $x isa career-your-skill, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-your-skill,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has career-skill-name $skill_name;
+optional_attrs:
+  level: career-skill-level
+  evidence: career-skill-evidence
+  recency: career-skill-recency
+  updated: career-last-updated
+  description: description

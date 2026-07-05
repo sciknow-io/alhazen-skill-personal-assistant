@@ -3203,376 +3203,42 @@ PRIORITY_EMOJI = {
 
 
 # =============================================================================
-# LEGACY MIGRATION (jobhunt -> career)
+# LEGACY MIGRATION (jobhunt -> career) — GLAV mapping
 # =============================================================================
-
-# (legacy type, new type, [(legacy attr, new attr, kind)]) — kind: s=string,
-# d=datetime, f=double, i=integer, m=multi-valued string
-_MIGRATION_ENTITIES = [
-    ("jhunt-company", "career-company", [
-        ("alh-company-url", "alh-company-url", "s"),
-        ("alh-linkedin-url", "alh-linkedin-url", "s"),
-        ("alh-location", "alh-location", "s"),
-    ]),
-    ("jhunt-position", "career-position", [
-        ("jhunt-job-url", "career-job-url", "s"),
-        ("jhunt-short-name", "career-short-name", "s"),
-        ("jhunt-salary-range", "career-salary-range", "s"),
-        ("alh-location", "alh-location", "s"),
-        ("jhunt-remote-policy", "career-remote-policy", "s"),
-        ("jhunt-team-size", "career-team-size", "s"),
-        ("jhunt-opportunity-status", "career-opportunity-status", "s"),
-        ("jhunt-priority-level", "career-priority-level", "s"),
-        ("jhunt-applied-date", "career-applied-date", "d"),
-        ("jhunt-response-date", "career-response-date", "d"),
-        ("jhunt-deadline", "career-deadline", "d"),
-    ]),
-    ("jhunt-engagement", "career-engagement", [
-        ("jhunt-short-name", "career-short-name", "s"),
-        ("jhunt-engagement-type", "career-engagement-type", "s"),
-        ("jhunt-rate-info", "career-rate-info", "s"),
-        ("jhunt-opportunity-status", "career-opportunity-status", "s"),
-        ("jhunt-priority-level", "career-priority-level", "s"),
-        ("jhunt-deadline", "career-deadline", "d"),
-    ]),
-    ("jhunt-venture", "career-venture", [
-        ("jhunt-short-name", "career-short-name", "s"),
-        ("jhunt-venture-stage", "career-venture-stage", "s"),
-        ("jhunt-equity-type", "career-equity-type", "s"),
-        ("jhunt-opportunity-status", "career-opportunity-status", "s"),
-        ("jhunt-priority-level", "career-priority-level", "s"),
-        ("jhunt-deadline", "career-deadline", "d"),
-    ]),
-    ("jhunt-lead", "career-lead", [
-        ("jhunt-short-name", "career-short-name", "s"),
-        ("jhunt-opportunity-status", "career-opportunity-status", "s"),
-        ("jhunt-priority-level", "career-priority-level", "s"),
-    ]),
-    ("jhunt-job-seeker-role", "career-agent-role", [
-        ("jhunt-target-role", "career-target-role", "s"),
-        ("jhunt-target-industries", "career-target-industries", "s"),
-        ("jhunt-salary-expectations", "career-salary-expectations", "s"),
-        ("jhunt-location-preference", "career-location-preference", "s"),
-        ("jhunt-search-focus", "career-search-focus", "s"),
-        ("alh-role-status", "alh-role-status", "s"),
-        ("alh-role-started-on", "alh-role-started-on", "d"),
-    ]),
-    ("jhunt-your-skill", "career-your-skill", [
-        ("jhunt-skill-name", "career-skill-name", "s"),
-        ("jhunt-skill-level", "career-skill-level", "s"),
-        ("jhunt-skill-evidence", "career-skill-evidence", "s"),
-        ("jhunt-skill-recency", "career-skill-recency", "s"),
-        ("jhunt-last-updated", "career-last-updated", "d"),
-    ]),
-    ("jhunt-skill-concept", "career-skill-concept", [
-        ("jhunt-alt-label", "career-alt-label", "m"),
-    ]),
-    ("jhunt-learning-resource", "career-learning-resource", [
-        ("jhunt-resource-type", "career-resource-type", "s"),
-        ("jhunt-resource-url", "career-resource-url", "s"),
-        ("jhunt-estimated-hours", "career-estimated-hours", "i"),
-        ("jhunt-completion-status", "career-completion-status", "s"),
-        ("jhunt-cited-paper-id", "career-cited-paper-id", "s"),
-        ("jhunt-cited-paper-ref", "career-cited-paper-ref", "s"),
-    ]),
-    ("jhunt-search-source", "career-search-source", [
-        ("jhunt-board-token", "career-board-token", "s"),
-        ("jhunt-board-platform", "career-board-platform", "s"),
-        ("alh-company-url", "alh-company-url", "s"),
-        ("jhunt-search-query", "career-search-query", "s"),
-        ("jhunt-search-location", "career-search-location", "s"),
-    ]),
-    ("jhunt-candidate", "career-candidate", [
-        ("jhunt-job-url", "career-job-url", "s"),
-        ("jhunt-external-job-id", "career-external-job-id", "s"),
-        ("alh-location", "alh-location", "s"),
-        ("jhunt-discovered-at", "career-discovered-at", "d"),
-        ("jhunt-relevance-score", "career-relevance-score", "f"),
-        ("jhunt-candidate-status", "career-candidate-status", "s"),
-        ("jhunt-triage-reason", "career-triage-reason", "s"),
-    ]),
-    ("jhunt-requirement", "career-requirement", [
-        ("jhunt-skill-name", "career-skill-name", "s"),
-        ("jhunt-skill-level", "career-skill-level", "s"),
-        ("jhunt-your-level", "career-your-level", "s"),
-        ("content", "content", "s"),
-    ]),
-    ("jhunt-job-description", "career-job-description", [("content", "content", "s")]),
-    ("jhunt-resume", "career-resume", [("content", "content", "s")]),
-    ("jhunt-cover-letter", "career-cover-letter", [("content", "content", "s")]),
-    ("jhunt-company-page", "career-company-page", [("content", "content", "s")]),
-    ("jhunt-proposal", "career-proposal", [("content", "content", "s")]),
-    ("jhunt-research-note", "career-research-note", [("content", "content", "s")]),
-    ("jhunt-interview-note", "career-interview-note", [
-        ("content", "content", "s"),
-        ("jhunt-interview-date", "career-interview-date", "d"),
-    ]),
-    ("jhunt-strategy-note", "career-strategy-note", [("content", "content", "s")]),
-    ("jhunt-skill-gap-note", "career-skill-gap-note", [("content", "content", "s")]),
-    ("jhunt-fit-analysis-note", "career-fit-analysis-note", [
-        ("content", "content", "s"),
-        ("jhunt-fit-score", "career-fit-score", "f"),
-        ("jhunt-fit-summary", "career-fit-summary", "s"),
-    ]),
-    ("jhunt-interaction-note", "career-interaction-note", [
-        ("content", "content", "s"),
-        ("alh-interaction-type", "alh-interaction-type", "s"),
-        ("alh-interaction-date", "alh-interaction-date", "d"),
-    ]),
-    ("jhunt-opp-summary-note", "career-opp-summary-note", [("content", "content", "s")]),
-    ("jhunt-dashboard-state-note", "career-dashboard-state-note", [("content", "content", "s")]),
-    ("jhunt-cc-brief-note", "career-cc-brief-note", [("content", "content", "s")]),
-    ("jhunt-cc-feedback-note", "career-cc-feedback-note", [("content", "content", "s")]),
-    ("jhunt-learning-plan-note", "career-learning-plan-note", [("content", "content", "s")]),
-    ("jhunt-search", "career-search", []),
-]
-
-# (legacy relation, new relation, (legacy role, new role), (legacy role, new role))
-# Endpoint ids are mapped through the entity id_map when the endpoint was
-# migrated, and passed through unchanged for shared core entities (people,
-# collections) that are not copied.
-_MIGRATION_RELATIONS = [
-    ("jhunt-position-at-company", "career-position-at-company",
-     ("position", "position"), ("employer", "employer")),
-    ("jhunt-opportunity-at-organization", "career-opportunity-at-organization",
-     ("opportunity", "opportunity"), ("organization", "organization")),
-    ("jhunt-requirement-for", "career-requirement-for",
-     ("requirement", "requirement"), ("position", "position")),
-    ("jhunt-skill-definition", "career-skill-definition",
-     ("concept", "concept"), ("defined-skill", "defined-skill")),
-    ("jhunt-skill-hierarchy", "career-skill-hierarchy",
-     ("broader-skill", "broader-skill"), ("narrower-skill", "narrower-skill")),
-    ("jhunt-addresses-requirement", "career-addresses-requirement",
-     ("resource", "resource"), ("requirement", "requirement")),
-    ("jhunt-source-provides", "career-source-provides",
-     ("source", "source"), ("candidate", "candidate")),
-    ("jhunt-seeker-pipeline", "career-seeker-pipeline",
-     ("seeker", "seeker"), ("opportunity", "opportunity")),
-    ("jhunt-seeker-has-skill", "career-seeker-has-skill",
-     ("seeker", "seeker"), ("skill", "skill")),
-    ("jhunt-contact-for-opportunity", "career-contact-for-opportunity",
-     ("contact", "contact"), ("opportunity", "opportunity")),
-    ("jhunt-background-reading", "career-background-reading",
-     ("opportunity", "opportunity"), ("reading-material", "reading-material")),
-]
-
-
-def _migration_value_clause(new_attr, value, kind):
-    """Render a `has` clause for a migrated attribute value, or None to skip."""
-    if value is None or value == "":
-        return None
-    if kind == "d":
-        return f"has {new_attr} {str(value)[:19]}"
-    if kind == "f":
-        return f"has {new_attr} {float(value)}"
-    if kind == "i":
-        return f"has {new_attr} {int(value)}"
-    return f'has {new_attr} "{escape_string(str(value))}"'
+# The migration is defined declaratively as GLAV rules in mapping/rules/
+# (source_match over jhunt-* -> target_insert into career-*, with foreign keys
+# resolved through the career-legacy-id natural key). This command is a thin
+# wrapper over the bundled schema_mapper-compatible runner; see
+# mapping/README.md for the rule catalog and standalone usage.
 
 
 def cmd_migrate_from_jobhunt(args):
-    """One-shot migration: copy legacy jhunt-* instances into career-* types.
+    """Run the GLAV mapping rules that copy legacy jhunt-* data into career-*.
 
-    Legacy jhunt-* types may be absent from the schema entirely (fresh
-    installs) — any query failure against a legacy type is treated as
-    "nothing to migrate" for that type, so this is a clean no-op when there
-    is no legacy data.
+    Delegates to mapping/glav_runner.py. A clean no-op when there is no
+    legacy data: rules whose source types are absent match zero rows.
     """
-    migrated = {}
-    skipped = {}
-    errors = []
-    id_map = {}  # legacy entity id -> new career entity id
+    import subprocess
 
-    with get_driver() as driver:
-        # ── Entities ─────────────────────────────────────────────
-        for legacy_type, new_type, attrs in _MIGRATION_ENTITIES:
-            fetch_fields = ['"id": $x.id', '"name": $x.name', '"description": $x.description',
-                            '"created-at": $x.created-at']
-            for legacy_attr, _, _ in attrs:
-                fetch_fields.append(f'"{legacy_attr}": $x.{legacy_attr}')
-            try:
-                with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
-                    rows = list(tx.query(
-                        f"match $x isa {legacy_type}; fetch {{ {', '.join(fetch_fields)} }};"
-                    ).resolve())
-            except Exception:
-                continue  # legacy type not in schema — nothing to migrate
+    skill_dir = Path(__file__).resolve().parent
+    runner = skill_dir / "mapping" / "glav_runner.py"
+    cmd = [
+        sys.executable,
+        str(runner),
+        "run",
+        "--source-db", TYPEDB_DATABASE,
+        "--target-db", TYPEDB_DATABASE,
+        "--rules-dir", str(skill_dir / "mapping" / "rules"),
+    ]
+    if getattr(args, "dry_run", False):
+        cmd.append("--dry-run")
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    if result.stdout:
+        print(result.stdout, end="")
+    elif result.returncode != 0:
+        print(json.dumps({"success": False, "error": result.stderr[-500:]}))
+    sys.exit(result.returncode)
 
-            count = 0
-            for row in rows:
-                legacy_id = row.get("id")
-                if not legacy_id:
-                    continue
-                new_id = generate_id(new_type.replace("career-", "").replace("-role", ""))
-                clauses = [f'has id "{new_id}"']
-                if row.get("name"):
-                    clauses.append(f'has name "{escape_string(str(row["name"]))}"')
-                if row.get("description"):
-                    clauses.append(f'has description "{escape_string(str(row["description"]))}"')
-                if row.get("created-at"):
-                    clauses.append(f'has created-at {str(row["created-at"])[:19]}')
-                for legacy_attr, new_attr, kind in attrs:
-                    value = row.get(legacy_attr)
-                    if kind == "m" and isinstance(value, list):
-                        for v in value:
-                            clause = _migration_value_clause(new_attr, v, "s")
-                            if clause:
-                                clauses.append(clause)
-                        continue
-                    clause = _migration_value_clause(new_attr, value, kind)
-                    if clause:
-                        clauses.append(clause)
-                try:
-                    with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
-                        tx.query(f"insert $x isa {new_type}, {', '.join(clauses)};").resolve()
-                        tx.commit()
-                    id_map[legacy_id] = new_id
-                    count += 1
-                except Exception as e:
-                    skipped[legacy_type] = skipped.get(legacy_type, 0) + 1
-                    errors.append(f"{legacy_type} {legacy_id}: {e}")
-            if count:
-                migrated[legacy_type] = count
-
-        # ── Relations between migrated/shared entities ───────────
-        for legacy_rel, new_rel, (lr1, nr1), (lr2, nr2) in _MIGRATION_RELATIONS:
-            try:
-                with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
-                    pairs = list(tx.query(f'''match
-                        ({lr1}: $a, {lr2}: $b) isa {legacy_rel};
-                    fetch {{ "a": $a.id, "b": $b.id }};''').resolve())
-            except Exception:
-                continue
-
-            count = 0
-            for pair in pairs:
-                a = id_map.get(pair.get("a"), pair.get("a"))
-                b = id_map.get(pair.get("b"), pair.get("b"))
-                if not a or not b:
-                    continue
-                try:
-                    with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
-                        tx.query(f'''match
-                            $a isa alh-identifiable-entity, has id "{a}";
-                            $b isa alh-identifiable-entity, has id "{b}";
-                        insert ({nr1}: $a, {nr2}: $b) isa {new_rel};''').resolve()
-                        tx.commit()
-                    count += 1
-                except Exception as e:
-                    errors.append(f"{legacy_rel} {a}->{b}: {e}")
-            if count:
-                migrated[legacy_rel] = count
-
-        # ── Aboutness links for migrated notes ───────────────────
-        aboutness_count = 0
-        for legacy_note_id, new_note_id in list(id_map.items()):
-            try:
-                with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
-                    subjects = list(tx.query(f'''match
-                        $n isa alh-note, has id "{legacy_note_id}";
-                        (note: $n, subject: $s) isa alh-aboutness;
-                    fetch {{ "sid": $s.id }};''').resolve())
-            except Exception:
-                continue
-            for subj in subjects:
-                sid = id_map.get(subj.get("sid"), subj.get("sid"))
-                if not sid:
-                    continue
-                try:
-                    with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
-                        tx.query(f'''match
-                            $n isa alh-note, has id "{new_note_id}";
-                            $s isa alh-identifiable-entity, has id "{sid}";
-                        insert (note: $n, subject: $s) isa alh-aboutness;''').resolve()
-                        tx.commit()
-                    aboutness_count += 1
-                except Exception as e:
-                    errors.append(f"aboutness {new_note_id}->{sid}: {e}")
-        if aboutness_count:
-            migrated["alh-aboutness"] = aboutness_count
-
-        # ── Role bearing for migrated agent roles ────────────────
-        bearing_count = 0
-        for legacy_id, new_id in list(id_map.items()):
-            if not new_id.startswith("agent-"):
-                continue
-            try:
-                with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
-                    bearers = list(tx.query(f'''match
-                        $r isa alh-role, has id "{legacy_id}";
-                        (bearer: $p, borne-role: $r) isa alh-role-bearing;
-                    fetch {{ "pid": $p.id }};''').resolve())
-            except Exception:
-                continue
-            for bearer in bearers:
-                try:
-                    with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
-                        tx.query(f'''match
-                            $p isa alh-person, has id "{bearer["pid"]}";
-                            $r isa career-agent-role, has id "{new_id}";
-                        insert (bearer: $p, borne-role: $r) isa alh-role-bearing;''').resolve()
-                        tx.commit()
-                    bearing_count += 1
-                except Exception as e:
-                    errors.append(f"role-bearing {new_id}: {e}")
-        if bearing_count:
-            migrated["alh-role-bearing"] = bearing_count
-
-    if not migrated and not errors:
-        print(json.dumps({
-            "success": True,
-            "migrated": {},
-            "message": "No legacy jhunt-* data found — nothing to migrate.",
-        }))
-        return
-
-    result = {
-        "success": True,
-        "migrated": migrated,
-        "id_map_size": len(id_map),
-        "message": "Migration complete. Legacy jhunt-* instances remain in place; "
-                   "verify the career-* copies then clean up legacy data manually. "
-                   "Tags on legacy entities are not copied.",
-    }
-    if skipped:
-        result["skipped"] = skipped
-    if errors:
-        result["errors"] = errors[:20]
-    print(json.dumps(result, indent=2, default=str))
-
-
-def _fetch_pipeline_data():
-    """Fetch all pipeline data: positions with status."""
-    with get_driver() as driver:
-        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
-            query = """
-                match $p isa career-position, has career-opportunity-status $status;
-                fetch {
-                    "id": $p.id,
-                    "name": $p.name,
-                    "career-short-name": $p.career-short-name,
-                    "career-job-url": $p.career-job-url,
-                    "career-priority-level": $p.career-priority-level,
-                    "status": $status
-                };
-            """
-            results = list(tx.query(query).resolve())
-
-    positions = []
-    for r in results:
-        pid = r.get("id", "")
-        if not pid:
-            continue
-        positions.append({
-            "id": pid,
-            "name": r.get("name", ""),
-            "short_name": r.get("career-short-name", ""),
-            "priority": r.get("career-priority-level", ""),
-            "url": r.get("career-job-url", ""),
-            "status": r.get("status", "researching"),
-        })
-
-    return positions
 
 
 def cmd_report_pipeline(args):
@@ -4134,7 +3800,8 @@ def main():
     p.add_argument("--target", help="Project or opportunity ID")
 
     # migrate-from-jobhunt
-    subparsers.add_parser("migrate-from-jobhunt", help="One-shot copy of legacy jhunt-* data into career-* types (no-op if no legacy data)")
+    p = subparsers.add_parser("migrate-from-jobhunt", help="Run the GLAV mapping rules copying legacy jhunt-* data into career-* types (no-op if no legacy data)")
+    p.add_argument("--dry-run", action="store_true", help="Report what would be migrated without writing")
 
     # list-pipeline
     p = subparsers.add_parser("list-pipeline", help="Show application pipeline")

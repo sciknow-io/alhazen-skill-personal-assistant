@@ -1,0 +1,23 @@
+name: position_at_company
+description: Rebuild position-at-company links between migrated copies
+depends_on: [positions, companies]
+idempotent: true
+source_match: |
+  match
+    (position: $p, employer: $c) isa jhunt-position-at-company;
+  fetch {
+    "position_id": $p.id,
+    "company_id": $c.id
+  };
+target_check: |
+  match
+    $tp isa career-position, has career-legacy-id $position_id;
+    $tc isa career-company, has career-legacy-id $company_id;
+    (position: $tp, employer: $tc) isa career-position-at-company;
+  fetch { "x": 1 };
+target_insert: |
+  match
+    $tp isa career-position, has career-legacy-id $position_id;
+    $tc isa career-company, has career-legacy-id $company_id;
+  insert
+    (position: $tp, employer: $tc) isa career-position-at-company;

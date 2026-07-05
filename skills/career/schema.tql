@@ -415,3 +415,38 @@ career-opportunity plays career-collaboration:work;
 # =============================================================================
 # END CAREER NAMESPACE
 # =============================================================================
+
+# -----------------------------------------------------------------------------
+# LEGACY MIGRATION SUPPORT (GLAV mapping from the former jhunt- namespace)
+# -----------------------------------------------------------------------------
+# Every migrated copy records the id of its jhunt-* source entity. Relation
+# rules in mapping/rules/ resolve foreign keys through this natural key, and
+# reruns are idempotent because target_check matches on it.
+
+attribute career-legacy-id, value string;
+
+career-company owns career-legacy-id;
+career-opportunity owns career-legacy-id;
+career-your-skill owns career-legacy-id;
+career-skill-concept owns career-legacy-id;
+career-search-source owns career-legacy-id;
+career-candidate owns career-legacy-id;
+career-learning-resource owns career-legacy-id;
+career-agent-role owns career-legacy-id;
+career-requirement owns career-legacy-id;
+career-job-description owns career-legacy-id;
+career-resume owns career-legacy-id;
+career-cover-letter owns career-legacy-id;
+career-company-page owns career-legacy-id;
+career-proposal owns career-legacy-id;
+career-research-note owns career-legacy-id;
+career-interview-note owns career-legacy-id;
+career-strategy-note owns career-legacy-id;
+career-skill-gap-note owns career-legacy-id;
+career-fit-analysis-note owns career-legacy-id;
+career-interaction-note owns career-legacy-id;
+career-opp-summary-note owns career-legacy-id;
+career-dashboard-state-note owns career-legacy-id;
+career-cc-brief-note owns career-legacy-id;
+career-cc-feedback-note owns career-legacy-id;
+career-learning-plan-note owns career-legacy-id;

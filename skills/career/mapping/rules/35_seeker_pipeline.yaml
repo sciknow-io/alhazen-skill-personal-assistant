@@ -1,0 +1,23 @@
+name: seeker_pipeline
+description: Rebuild seeker-pipeline links from agent role to opportunities
+depends_on: [agent_role, positions, ventures, leads, engagements]
+idempotent: true
+source_match: |
+  match
+    (seeker: $r, opportunity: $o) isa jhunt-seeker-pipeline;
+  fetch {
+    "role_id": $r.id,
+    "opportunity_id": $o.id
+  };
+target_check: |
+  match
+    $tr isa career-agent-role, has career-legacy-id $role_id;
+    $to isa career-opportunity, has career-legacy-id $opportunity_id;
+    (seeker: $tr, opportunity: $to) isa career-seeker-pipeline;
+  fetch { "x": 1 };
+target_insert: |
+  match
+    $tr isa career-agent-role, has career-legacy-id $role_id;
+    $to isa career-opportunity, has career-legacy-id $opportunity_id;
+  insert
+    (seeker: $tr, opportunity: $to) isa career-seeker-pipeline;

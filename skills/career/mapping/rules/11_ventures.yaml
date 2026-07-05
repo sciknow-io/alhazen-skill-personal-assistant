@@ -1,0 +1,37 @@
+name: ventures
+description: Map jhunt-venture to career-venture
+depends_on: []
+idempotent: true
+skolem_prefix: venture
+skolem_keys: [id]
+datetime_attrs: [created-at]
+source_match: |
+  match
+    $s isa jhunt-venture;
+  fetch {
+    "id": $s.id,
+    "name": $s.name,
+    "description": $s.description,
+    "status": $s.jhunt-opportunity-status,
+    "priority": $s.jhunt-priority-level,
+    "stage": $s.jhunt-venture-stage,
+    "equity": $s.jhunt-equity-type,
+    "short_name": $s.jhunt-short-name,
+    "created": $s.created-at
+  };
+target_check: |
+  match $x isa career-venture, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-venture,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has name $name;
+optional_attrs:
+  description: description
+  status: career-opportunity-status
+  priority: career-priority-level
+  stage: career-venture-stage
+  equity: career-equity-type
+  short_name: career-short-name
+  created: created-at

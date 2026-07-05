@@ -1,0 +1,23 @@
+name: aboutness
+description: Re-link migrated notes to migrated subjects via alh-aboutness (rows whose endpoints were not migrated insert nothing)
+depends_on: [research_notes, fit_analysis_notes, interaction_notes, opp_summary_notes, positions, companies, agent_role]
+idempotent: true
+source_match: |
+  match
+    (note: $n, subject: $subj) isa alh-aboutness; $n isa alh-note;
+  fetch {
+    "note_id": $n.id,
+    "subject_id": $subj.id
+  };
+target_check: |
+  match
+    $tn isa alh-note, has career-legacy-id $note_id;
+    $ts has career-legacy-id $subject_id; not { $ts isa alh-note; };
+    (note: $tn, subject: $ts) isa alh-aboutness;
+  fetch { "x": 1 };
+target_insert: |
+  match
+    $tn isa alh-note, has career-legacy-id $note_id;
+    $ts has career-legacy-id $subject_id; not { $ts isa alh-note; };
+  insert
+    (note: $tn, subject: $ts) isa alh-aboutness;
