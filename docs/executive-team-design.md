@@ -108,10 +108,16 @@ match — agent supplies groupings), `verify-finding`, `record-gate`,
 `add-deliverable`, `update-mission`, `list-missions`, `show-mission`,
 `list-findings` (`--divergent`, `--unverified`), `report-mission`, `audit`.
 
-**SKILL.md workflow:** brief→interview (⏸)→plan (⏸ approve)→fan out 3+ parallel
-runs (Agent tool / separate sessions; same prompt each run)→record findings per
-run→consensus pass (100% consensus ≈ factual; single-thread claims → re-research)
-→verification in a *fresh* thread→three-question gate (⏸)→deliverable choice.
+**SKILL.md workflow (commissioning model):** brief→interview (⏸)→plan (⏸)→frame
+decision-linked questions (⏸ approve)→dispatch to a research engine declared in
+`engines.yaml` (deep-research / tech-recon / scientific-literature / ad-hoc;
+`dispatch` validates the engine and echoes its invoke+ingest contract)→commission
+the engine→`ingest-report` (report stored verbatim as `anlst-source` kind
+`engine-report`, engine-side handle in `anlst-external-ref`)→read the report in
+the decision's context, extract findings→consensus across engines→verification in
+a *fresh* thread→three-question gate (⏸)→deliverable. The analyst does no
+discovery/ingestion itself — it is the question-setting and evidence-accounting
+layer over the engines, feeding decisions managed by the assistant suite.
 
 **Dashboard tabs:** Missions (board by mission-status) · Mission detail
 (consensus matrix: findings × runs, verification badges, gate status) · Findings

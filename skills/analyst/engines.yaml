@@ -1,0 +1,62 @@
+# Research engines the analyst commissions.
+#
+# This file IS the analyst->engine relationship: the analyst frames
+# decision-linked questions, dispatches them to one of these engines, then
+# reads the engine's report back into findings/consensus/verification/gate.
+# `analyst.py dispatch --engine <name>` validates against this list, and
+# `analyst.py list-engines` serves it to agents and dashboards.
+#
+# The analyst itself performs NO discovery or ingestion. If a question fits an
+# engine below, it goes there. `ad-hoc` exists only for questions no engine
+# covers (quick single-thread lookups) and should be the exception.
+
+engines:
+  - name: deep-research
+    kind: claude-skill
+    invoke: "Skill deep-research, passing the commissioning brief as args"
+    when: >
+      General/market/organizational questions needing multi-source web
+      research with adversarial claim verification and a cited report.
+      The default engine for anything that is not technology-comparison
+      or academic-literature shaped.
+    report: "Cited markdown report returned by the skill run"
+    ingest: "ingest-report --run <id> --content-file <report.md>"
+    external_ref: "report file path (or conversation/session reference)"
+
+  - name: tech-recon
+    kind: alhazen-skill
+    database: alh_deep_research
+    invoke: >
+      tech_recon.py start-investigation --name ... --goal ... --success-criteria ...
+      --type landscape|evaluation|question|survey|monitor|brief
+      (goal + success criteria come from the analyst's commissioning brief)
+    when: >
+      Technology questions: compare systems, evaluate a tool for a use case,
+      survey the state of the art, monitor a space. Tech-recon owns
+      discovery, per-system ingestion, and Observable Plot analysis.
+    report: "Investigation synthesis + dashboard at /tech-recon"
+    ingest: "ingest-report --run <id> --content-file <synthesis.md> --external-ref <trec-investigation-id>"
+    external_ref: "trec-investigation id in alh_deep_research (cross-database soft ref)"
+
+  - name: scientific-literature
+    kind: alhazen-skill
+    database: alh_deep_research
+    invoke: >
+      scientific_literature.py search --query ... --collection ...
+      (then corpus analysis per that skill's SKILL.md)
+    when: >
+      Academic-literature questions: what does published research say,
+      evidence for/against a scientific claim, key papers/authors in a field.
+    report: "Corpus + collection summaries; papers as scilit-paper entities"
+    ingest: "ingest-report --run <id> --content-file <summary.md> --external-ref <collection-id>"
+    external_ref: "scilit collection/corpus id in alh_deep_research (cross-database soft ref)"
+
+  - name: ad-hoc
+    kind: fallback
+    invoke: "A single agent research thread in this session"
+    when: >
+      Small, fast questions no engine covers. If you are running three
+      parallel ad-hoc threads, you wanted the deep-research engine instead.
+    report: "Findings recorded directly via add-finding"
+    ingest: "optional; add-finding --run <id> directly"
+    external_ref: "none"

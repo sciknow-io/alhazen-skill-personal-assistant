@@ -653,6 +653,252 @@ def cmd_complete_run(args):
 # =============================================================================
 
 
+
+# ---------------------------------------------------------------------------
+# Engine commissioning (the analyst -> research-engine relationship; the
+# allowed engines and their invoke/ingest contracts live in engines.yaml)
+# ---------------------------------------------------------------------------
+
+ENGINES_FILE = Path(__file__).resolve().parent / "engines.yaml"
+
+
+def load_engines() -> dict:
+    """Load the declared research engines from engines.yaml (name -> spec)."""
+    import yaml
+
+    if not ENGINES_FILE.exists():
+        return {}
+    with open(ENGINES_FILE) as fh:
+        cfg = yaml.safe_load(fh) or {}
+    return {e["name"]: e for e in cfg.get("engines", [])}
+
+
+def cmd_list_engines(args):
+    """List the research engines the analyst may commission."""
+    engines = load_engines()
+    print(json.dumps({"success": True, "engines": list(engines.values()),
+                      "count": len(engines)}, indent=2))
+
+
+def cmd_add_question(args):
+    """Frame a research question on a mission (status: draft until approved)."""
+    question_id = args.id or generate_id("question")
+    timestamp = get_timestamp()
+
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            if not _entity_exists(tx, "anlst-mission", args.mission):
+                print(json.dumps({"success": False, "error": f"Mission {args.mission} not found"}))
+                return
+
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            tx.query(f'''insert $q isa anlst-question,
+                has id "{question_id}",
+                has anlst-question-text "{escape_string(args.text)}",
+                has anlst-question-status "{escape_string(args.status)}",
+                has created-at {timestamp};''').resolve()
+            tx.commit()
+
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            tx.query(f'''match
+                $m isa anlst-mission, has id "{escape_string(args.mission)}";
+                $q isa anlst-question, has id "{question_id}";
+            insert (mission: $m, question: $q) isa anlst-mission-question;''').resolve()
+            tx.commit()
+
+    print(json.dumps({"success": True, "question_id": question_id,
+                      "mission_id": args.mission, "status": args.status}))
+
+
+def cmd_list_questions(args):
+    """List a mission's questions with status and answering runs."""
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            questions = list(tx.query(f'''match
+                $m isa anlst-mission, has id "{escape_string(args.mission)}";
+                (mission: $m, question: $q) isa anlst-mission-question;
+            fetch {{
+                "id": $q.id,
+                "text": $q.anlst-question-text,
+                "status": $q.anlst-question-status,
+                "created-at": $q.created-at
+            }};''').resolve())
+            for q in questions:
+                try:
+                    runs = list(tx.query(f'''match
+                        $q isa anlst-question, has id "{q["id"]}";
+                        (run: $r, question: $q) isa anlst-run-answers;
+                    fetch {{ "run_id": $r.id, "engine": $r.anlst-engine,
+                             "status": $r.anlst-run-status }};''').resolve())
+                    q["runs"] = runs
+                except Exception:
+                    q["runs"] = []
+
+    print(json.dumps({"success": True, "mission_id": args.mission,
+                      "questions": questions, "count": len(questions)},
+                     indent=2, default=str))
+
+
+def cmd_update_question(args):
+    """Update a question's status (draft | approved | dispatched | answered) or text."""
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            if not _entity_exists(tx, "anlst-question", args.id):
+                print(json.dumps({"success": False, "error": f"Question {args.id} not found"}))
+                return
+        if args.status:
+            _replace_attr(driver, "anlst-question", args.id, "anlst-question-status",
+                          f'"{escape_string(args.status)}"')
+        if args.text:
+            _replace_attr(driver, "anlst-question", args.id, "anlst-question-text",
+                          f'"{escape_string(args.text)}"')
+
+    print(json.dumps({"success": True, "question_id": args.id,
+                      "status": args.status, "text": args.text}))
+
+
+def cmd_dispatch(args):
+    """Dispatch approved questions to a research engine (creates the run).
+
+    The engine must be declared in engines.yaml — that file is the explicit
+    analyst->engine contract. Output echoes the engine's invoke and ingest
+    instructions so the agent can commission it immediately.
+    """
+    engines = load_engines()
+    if args.engine not in engines:
+        print(json.dumps({
+            "success": False,
+            "error": f"Unknown engine '{args.engine}'. Declared engines: {sorted(engines)}. "
+                     "Add it to engines.yaml if it is a real new engine.",
+        }))
+        return
+    engine = engines[args.engine]
+
+    run_id = args.id or generate_id("run")
+    timestamp = get_timestamp()
+    label = args.model or args.engine
+
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            if not _entity_exists(tx, "anlst-mission", args.mission):
+                print(json.dumps({"success": False, "error": f"Mission {args.mission} not found"}))
+                return
+            for qid in args.questions or []:
+                if not _entity_exists(tx, "anlst-question", qid):
+                    print(json.dumps({"success": False, "error": f"Question {qid} not found"}))
+                    return
+
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            ext = (f'has anlst-external-ref "{escape_string(args.external_ref)}",'
+                   if args.external_ref else "")
+            tx.query(f'''insert $r isa anlst-run,
+                has id "{run_id}",
+                has name "dispatch: {escape_string(args.engine)}",
+                has anlst-engine "{escape_string(args.engine)}",
+                has anlst-model-name "{escape_string(label)}",
+                {ext}
+                has anlst-run-status "dispatched",
+                has anlst-started-at {timestamp},
+                has created-at {timestamp};''').resolve()
+            tx.commit()
+
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            tx.query(f'''match
+                $m isa anlst-mission, has id "{escape_string(args.mission)}";
+                $r isa anlst-run, has id "{run_id}";
+            insert (mission: $m, run: $r) isa anlst-mission-run;''').resolve()
+            tx.commit()
+
+        for qid in args.questions or []:
+            with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+                tx.query(f'''match
+                    $r isa anlst-run, has id "{run_id}";
+                    $q isa anlst-question, has id "{escape_string(qid)}";
+                insert (run: $r, question: $q) isa anlst-run-answers;''').resolve()
+                tx.commit()
+            _replace_attr(driver, "anlst-question", qid, "anlst-question-status",
+                          '"dispatched"')
+
+    print(json.dumps({
+        "success": True,
+        "run_id": run_id,
+        "mission_id": args.mission,
+        "engine": args.engine,
+        "questions": args.questions or [],
+        "next_steps": {
+            "invoke": engine.get("invoke"),
+            "then_ingest": engine.get("ingest"),
+            "external_ref": engine.get("external_ref"),
+        },
+    }, indent=2))
+
+
+def cmd_ingest_report(args):
+    """Capture an engine's report verbatim and close out the dispatch.
+
+    Stores the report as an anlst-source (kind: engine-report) linked to the
+    run, marks the run completed, records the engine-side handle, and flips
+    the run's questions to answered. Findings are then extracted by the agent
+    with add-finding --run <id> while reading the report in the context of
+    the mission's decision.
+    """
+    content = resolve_content(args)
+    if not content:
+        print(json.dumps({"success": False, "error": "No report content (--content or --content-file)"}))
+        return
+
+    source_id = generate_id("source")
+    timestamp = get_timestamp()
+
+    with get_driver() as driver:
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            if not _entity_exists(tx, "anlst-run", args.run):
+                print(json.dumps({"success": False, "error": f"Run {args.run} not found"}))
+                return
+
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            url = f'has anlst-source-url "{escape_string(args.url)}",' if args.url else ""
+            tx.query(f'''insert $s isa anlst-source,
+                has id "{source_id}",
+                has name "{escape_string(args.name or "engine report")}",
+                has anlst-source-kind "engine-report",
+                {url}
+                has content "{escape_string(content)}",
+                has created-at {timestamp};''').resolve()
+            tx.commit()
+
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.WRITE) as tx:
+            tx.query(f'''match
+                $r isa anlst-run, has id "{escape_string(args.run)}";
+                $s isa anlst-source, has id "{source_id}";
+            insert (run: $r, report: $s) isa anlst-run-report;''').resolve()
+            tx.commit()
+
+        _replace_attr(driver, "anlst-run", args.run, "anlst-run-status", '"completed"')
+        _replace_attr(driver, "anlst-run", args.run, "anlst-completed-at", timestamp)
+        if args.external_ref:
+            _replace_attr(driver, "anlst-run", args.run, "anlst-external-ref",
+                          f'"{escape_string(args.external_ref)}"')
+
+        with driver.transaction(TYPEDB_DATABASE, TransactionType.READ) as tx:
+            qids = [q["id"] for q in tx.query(f'''match
+                $r isa anlst-run, has id "{escape_string(args.run)}";
+                (run: $r, question: $q) isa anlst-run-answers;
+            fetch {{ "id": $q.id }};''').resolve()]
+        for qid in qids:
+            _replace_attr(driver, "anlst-question", qid, "anlst-question-status",
+                          '"answered"')
+
+    print(json.dumps({
+        "success": True,
+        "run_id": args.run,
+        "report_source_id": source_id,
+        "questions_answered": qids,
+        "next": "Read the report in the mission's decision context and extract "
+                "claims with add-finding --run " + args.run,
+    }))
+
+
 def cmd_add_finding(args):
     """Record one discrete claim from a run."""
     finding_id = args.id or generate_id("finding")
@@ -1206,6 +1452,49 @@ def main():
     p.add_argument("--status", choices=["completed", "failed"], default="completed",
                    help="Final run status (default: completed)")
 
+    # list-engines
+    subparsers.add_parser("list-engines",
+                          help="List the research engines the analyst may commission (engines.yaml)")
+
+    # add-question
+    p = subparsers.add_parser("add-question", help="Frame a research question on a mission")
+    p.add_argument("--mission", required=True, help="Mission ID")
+    p.add_argument("--text", required=True, help="The research question")
+    p.add_argument("--status", choices=["draft", "approved"], default="draft")
+    p.add_argument("--id", help="Specific question ID")
+
+    # list-questions
+    p = subparsers.add_parser("list-questions", help="List a mission's questions")
+    p.add_argument("--mission", required=True, help="Mission ID")
+
+    # update-question
+    p = subparsers.add_parser("update-question", help="Update a question's status or text")
+    p.add_argument("--id", required=True, help="Question ID")
+    p.add_argument("--status", choices=["draft", "approved", "dispatched", "answered"])
+    p.add_argument("--text", help="Revised question text")
+
+    # dispatch
+    p = subparsers.add_parser("dispatch",
+                              help="Dispatch approved questions to a research engine (engines.yaml)")
+    p.add_argument("--mission", required=True, help="Mission ID")
+    p.add_argument("--engine", required=True, help="Engine name declared in engines.yaml")
+    p.add_argument("--questions", nargs="*", help="Question IDs this dispatch addresses")
+    p.add_argument("--model", help="Optional session/model label (defaults to engine name)")
+    p.add_argument("--external-ref", dest="external_ref",
+                   help="Engine-side handle if already known (e.g. trec-investigation id)")
+    p.add_argument("--id", help="Specific run ID")
+
+    # ingest-report
+    p = subparsers.add_parser("ingest-report",
+                              help="Capture an engine's report verbatim and close out the dispatch")
+    p.add_argument("--run", required=True, help="Run (dispatch) ID")
+    p.add_argument("--content", help="Report content")
+    p.add_argument("--content-file", dest="content_file", help="Path to report file (@/tmp/x.md also works)")
+    p.add_argument("--name", help="Report title")
+    p.add_argument("--url", help="Report URL if hosted")
+    p.add_argument("--external-ref", dest="external_ref",
+                   help="Engine-side handle (trec-investigation id, collection id, path)")
+
     # add-finding
     p = subparsers.add_parser("add-finding", help="Record one discrete claim from a run")
     p.add_argument("--run", required=True, help="Run ID that yielded this finding")
@@ -1304,6 +1593,12 @@ def main():
         "show-mission": cmd_show_mission,
         # Runs
         "add-run": cmd_add_run,
+        "list-engines": cmd_list_engines,
+        "add-question": cmd_add_question,
+        "list-questions": cmd_list_questions,
+        "update-question": cmd_update_question,
+        "dispatch": cmd_dispatch,
+        "ingest-report": cmd_ingest_report,
         "complete-run": cmd_complete_run,
         # Findings & evidence
         "add-finding": cmd_add_finding,

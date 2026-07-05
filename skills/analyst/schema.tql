@@ -29,7 +29,13 @@ attribute anlst-decision-ref, value string;
 
 # Run attributes (one research thread = one model/session)
 attribute anlst-model-name, value string;         # e.g. "claude-opus", "gpt-5", "session-2"
-attribute anlst-run-status, value string;         # running | completed | failed
+attribute anlst-run-status, value string;         # dispatched | running | completed | failed
+# Engine dispatch (the analyst commissions research engines; see engines.yaml)
+attribute anlst-engine, value string;             # deep-research | tech-recon | scientific-literature | ad-hoc
+attribute anlst-external-ref, value string;       # engine-side handle: trec-investigation id, corpus id, report path/URL
+# Research questions the mission frames for the engines
+attribute anlst-question-text, value string;
+attribute anlst-question-status, value string;    # draft | approved | dispatched | answered
 attribute anlst-started-at, value datetime;
 attribute anlst-completed-at, value datetime;
 
@@ -81,6 +87,21 @@ relation anlst-mission-deliverable,
     relates mission,
     relates deliverable;
 
+# MISSION-QUESTION - The questions a mission frames for the research engines
+relation anlst-mission-question,
+    relates mission,
+    relates question;
+
+# RUN-ANSWERS - Which questions a dispatched engine run addresses
+relation anlst-run-answers,
+    relates run,
+    relates question;
+
+# RUN-REPORT - The engine's report, captured verbatim as a source artifact
+relation anlst-run-report,
+    relates run,
+    relates report;
+
 
 # -----------------------------------------------------------------------------
 # ENTITY TYPES - Analyst Things
@@ -97,21 +118,35 @@ entity anlst-mission sub alh-domain-thing,
     owns anlst-deadline,
     owns anlst-decision-ref,
     plays anlst-mission-run:mission,
+    plays anlst-mission-question:mission,
     plays anlst-mission-deliverable:mission;
 
-# ANLST-RUN - One research thread (one model/session, same prompt as siblings)
+# ANLST-RUN - One dispatch to a research engine (or one ad-hoc research thread).
+# The engine and external handle make the analyst->engine relationship explicit;
+# allowed engines are declared in engines.yaml.
 entity anlst-run sub alh-domain-thing,
     owns anlst-model-name,
+    owns anlst-engine,
+    owns anlst-external-ref,
     owns anlst-run-status,
     owns anlst-started-at,
     owns anlst-completed-at,
     plays anlst-mission-run:run,
+    plays anlst-run-answers:run,
+    plays anlst-run-report:run,
     plays anlst-run-yielded:run;
 
 
 # -----------------------------------------------------------------------------
 # ENTITY TYPES - Analyst Fragments
 # -----------------------------------------------------------------------------
+
+# ANLST-QUESTION - A decision-framed research question commissioned to an engine
+entity anlst-question sub alh-fragment,
+    owns anlst-question-text,
+    owns anlst-question-status,
+    plays anlst-mission-question:question,
+    plays anlst-run-answers:question;
 
 # ANLST-FINDING - One discrete claim extracted from a run
 entity anlst-finding sub alh-fragment,
@@ -128,12 +163,15 @@ entity anlst-finding sub alh-fragment,
 # ENTITY TYPES - Analyst Artifacts
 # -----------------------------------------------------------------------------
 
-# ANLST-SOURCE - Evidence backing findings
+# ANLST-SOURCE - Evidence backing findings. Kind "engine-report" marks a
+# research engine's report captured verbatim (linked to its run via
+# anlst-run-report); other kinds are individual cited sources.
 entity anlst-source sub alh-artifact,
     owns anlst-source-url,
     owns anlst-source-kind,
     owns anlst-reliability,
-    plays anlst-finding-source:source;
+    plays anlst-finding-source:source,
+    plays anlst-run-report:report;
 
 # ANLST-DELIVERABLE - Output of a mission (not always a wall of text)
 entity anlst-deliverable sub alh-artifact,

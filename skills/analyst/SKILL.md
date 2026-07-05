@@ -21,17 +21,42 @@ read_strategy: |
 
 Use this skill to run research the way an executive briefs an analyst, not the way
 people query a search engine. Every mission is framed by a **decision**, constrained
-by time horizon / source policy / exclusions, executed as **3+ parallel research
-runs** ("wisdom of the crowd"), aggregated into consensus, **verified in a fresh
-thread**, and passed through the **three-question gate** before anything is
-delivered.
+by time horizon / source policy / exclusions, and executed by **commissioning the
+research engines** declared in [`engines.yaml`](engines.yaml): the analyst frames
+the questions, dispatches them to an engine, reads the reports back in the
+decision's context, aggregates consensus, **verifies in a fresh thread**, and
+passes everything through the **three-question gate** before it touches a decision.
+
+**Division of labour (explicit, configured):** the analyst does NOT discover or
+ingest — the engines do. `engines.yaml` is the analyst→engine contract; the
+`dispatch` command validates against it, and its output echoes the engine's
+invoke/ingest instructions. The analyst owns what no engine does: decision
+framing, question setting, claim-level consensus and verification bookkeeping,
+and the operator's sign-off gate — feeding decisions managed by the personal
+assistant suite (`advisor`, `career`, `ops`, surfaced by `chief-of-staff`).
 
 **Key principle:** the script stores and queries; Claude does the sensemaking
-(interviewing, researching, matching claims across runs, verifying, synthesizing).
+(interviewing, question-framing, reading reports, matching claims across
+engines, verifying, synthesizing).
 
 This skill operationalizes the repo's [operating principles](../../docs/operating-principles.md):
 primer notes (speak, don't type), interview-first, plan/execute split, explicit
 ⏸ OPERATOR CHECKPOINT moments, wisdom-of-the-crowd, and the three-question gate.
+
+---
+
+## Routing — when to use the analyst vs. an engine directly
+
+| The ask | Route |
+|---------|-------|
+| Research that informs a decision in flight (advisor/career/ops) | **analyst mission** — it commissions engines and books the evidence |
+| "Compare tools / evaluate X / survey a tech space" with no decision record needed | `tech-recon` directly |
+| "What does the literature say about X" standalone | `scientific-literature` directly |
+| Quick one-off web question | `/deep-research` skill or an ad-hoc thread |
+
+If a mission's question is technology-shaped, the analyst still doesn't do the
+work — it dispatches to `tech-recon` and reads the investigation back. Run
+`analyst.py list-engines` for the live contract.
 
 ---
 
@@ -124,39 +149,67 @@ analyst.py add-plan --mission <id> --content-file plan.md
 analyst.py update-mission --id <id> --status running
 ```
 
-### 4. Fan out 3+ parallel research runs (wisdom of the crowd)
+### 4. Frame the questions  ⏸ OPERATOR CHECKPOINT (approve questions)
 
-Never trust one model/thread. Register at least three runs and execute them
-**independently with the SAME research prompt** (built from the brief + plan):
-
-- Use your subagent/Task tooling to dispatch parallel research agents, or separate
-  sessions if subagents are unavailable.
-- Use different models or at least different instances/sessions when available
-  (e.g. `--model claude-opus`, `--model gpt-5`, `--model claude-opus-session-2`).
-- Do not share intermediate results between runs — independence is the point.
+Decompose the plan into discrete, decision-linked research questions. A good
+question names what the decision needs to know, not a topic:
 
 ```bash
-analyst.py add-run --mission <id> --model "claude-opus"
-analyst.py add-run --mission <id> --model "gpt-5"
-analyst.py add-run --mission <id> --model "gemini"
+analyst.py add-question --mission <id> --text "What is TypeDB's production adoption vs Neo4j in 2025-2026?"
+analyst.py add-question --mission <id> --text "What are the licensing/cost implications at our scale?"
+analyst.py list-questions --mission <id>
+analyst.py update-question --id <question-id> --status approved
 ```
 
-### 5. Record findings per run
+The operator approves the question set before anything is dispatched.
 
-As each run completes, decompose its output into **discrete claims** — one
-`add-finding` per claim, with sources:
+### 5. Dispatch to the research engines
+
+Route each approved question to the engine that owns its shape — the engines and
+their invoke/ingest contracts are declared in [`engines.yaml`](engines.yaml)
+(`list-engines` to inspect):
+
+| Question shape | Engine |
+|----------------|--------|
+| General / market / org web research | `deep-research` (the Claude skill: fan-out search, adversarial verification, cited report) |
+| Technology comparison / evaluation / survey / monitoring | `tech-recon` (in `alh_deep_research`) |
+| Academic literature | `scientific-literature` (in `alh_deep_research`) |
+| Tiny lookup no engine covers | `ad-hoc` (the exception, not the rule) |
 
 ```bash
-analyst.py add-finding --run <run-id> --claim "..." --confidence high --content "supporting detail"
+analyst.py dispatch --mission <id> --engine tech-recon --questions q-1 q-2
+# → returns the run id + the engine's invoke and ingest instructions
+```
+
+Then **commission the engine exactly as the dispatch output says** (e.g. invoke
+the `/deep-research` skill with the question as its brief, or
+`tech_recon.py start-investigation` with goal + success criteria from the
+mission's decision context). For independent multi-engine consensus on a
+load-bearing question, dispatch the SAME question to more than one engine.
+
+### 6. Ingest the reports and extract findings in decision context
+
+When an engine finishes, capture its report verbatim and close out the dispatch:
+
+```bash
+analyst.py ingest-report --run <run-id> --content-file /tmp/report.md \
+    --external-ref "investigation-abc123"   # engine-side handle (cross-DB soft ref)
+```
+
+Now **read the report against the mission's decision-context** — not as a
+summary exercise. Extract only the claims that bear on the decision, one
+`add-finding` per claim, sourced from the report and the citations inside it:
+
+```bash
+analyst.py add-finding --run <run-id> --claim "..." --confidence high --content "what the report says + where"
 analyst.py link-source --finding <finding-id> --url "https://..." --kind academic --reliability high
-analyst.py complete-run --run <run-id>
 ```
 
 Then `analyst.py update-mission --id <id> --status aggregating`.
 
-### 6. Consensus aggregation
+### 7. Consensus aggregation
 
-You (the agent) match claims across runs semantically — the script just stores your
+You (the agent) match claims across engine reports semantically — the script just stores your
 groupings. For each claim group, call `record-consensus` with all the finding ids
 that assert the same claim and how many runs agree:
 
@@ -169,14 +222,14 @@ Interpretation:
 
 - **100% consensus ≈ likely factual** — still verify the load-bearing ones.
 - **Single-thread claims are marked divergent** — investigate or re-research them
-  (a targeted follow-up run) before they appear in any deliverable.
+  (a targeted follow-up dispatch) before they appear in any deliverable.
 
 Write the cross-run synthesis as a synthesis note (`--type` is implicit in the
 command): store it via a deliverable draft or attach with the notebook's note
 tooling; the consensus narrative belongs in the mission record. Then
 `update-mission --status verifying`.
 
-### 7. Verification — in a FRESH thread
+### 8. Verification — in a FRESH thread
 
 AI verifies better than it generates, but **never in the thread that generated the
 claims** (it will defend its own work). Open a fresh session/subagent with no
@@ -190,9 +243,9 @@ analyst.py verify-finding --finding <id> --status refuted --content "source does
 ```
 
 Refuted findings never reach the deliverable. `needs-work` findings go back to
-step 6 (re-research).
+step 7 (re-research).
 
-### 8. Three-question gate  ⏸ OPERATOR CHECKPOINT
+### 9. Three-question gate  ⏸ OPERATOR CHECKPOINT
 
 Before acting on or delivering ANY research, the operator answers the gate:
 
@@ -211,7 +264,7 @@ analyst.py record-gate --mission <id> \
 A passing gate moves the mission to `gated`. A failing gate (`--failed`) leaves
 status unchanged — go back to the step the answers point at.
 
-### 9. Deliverable  ⏸ OPERATOR CHECKPOINT (choose format)
+### 10. Deliverable  ⏸ OPERATOR CHECKPOINT (choose format)
 
 Don't default to a wall of text. Ask what would actually get used:
 
@@ -244,6 +297,12 @@ JSON to stdout (except `report-mission`, which prints Markdown).
 | `list-missions` | List missions + rollups | `--status` |
 | `show-mission` | Full detail (runs, findings, gate, deliverables) | `--id` (req) |
 | `add-run` | Register a research thread | `--mission` (req), `--model` (req) |
+| `list-engines` | The declared engine contract (engines.yaml) | |
+| `add-question` | Frame a decision-linked research question | `--mission` (req), `--text` (req), `--status` |
+| `list-questions` | Questions with status + answering dispatches | `--mission` (req) |
+| `update-question` | Approve / edit a question | `--id` (req), `--status`, `--text` |
+| `dispatch` | Send questions to an engine; echoes its invoke/ingest contract | `--mission`, `--engine` (req), `--questions`, `--external-ref` |
+| `ingest-report` | Capture engine report verbatim, close the dispatch | `--run` (req), `--content/-file`, `--external-ref`, `--url` |
 | `complete-run` | Finish a run | `--run` (req), `--status completed\|failed` |
 | `add-finding` | One discrete claim from a run | `--run` (req), `--claim` (req), `--confidence`, `--content` |
 | `link-source` | Evidence for a finding | `--finding` (req), `--url`/`--source`, `--name`, `--kind`, `--reliability` |
@@ -267,6 +326,7 @@ Notes attach to subjects via `alh-aboutness`.
 | Type | Sub | Key attributes |
 |------|-----|----------------|
 | `anlst-mission` | `alh-domain-thing` | `anlst-decision-context`, `anlst-time-horizon`, `anlst-source-policy`, `anlst-exclusions`, `anlst-mission-status`, `anlst-priority-level`, `anlst-deadline`, `anlst-decision-ref` (soft ref to an advisor decision) |
+| `anlst-question` | Decision-linked research question commissioned to an engine (`anlst-question-text`, `anlst-question-status`) |
 | `anlst-run` | `alh-domain-thing` | `anlst-model-name`, `anlst-run-status`, `anlst-started-at`, `anlst-completed-at` |
 | `anlst-finding` | `alh-fragment` | `anlst-claim`, `anlst-confidence-level`, `anlst-consensus-count`, `anlst-divergent`, `anlst-verification-status` |
 | `anlst-source` | `alh-artifact` | `anlst-source-url`, `anlst-source-kind`, `anlst-reliability` |
