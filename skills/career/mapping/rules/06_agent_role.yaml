@@ -1,0 +1,41 @@
+name: agent_role
+description: Map jhunt-job-seeker-role to career-agent-role
+depends_on: []
+idempotent: true
+skolem_prefix: role
+skolem_keys: [id]
+datetime_attrs: [created-at, alh-role-started-on]
+source_match: |
+  match
+    $s isa jhunt-job-seeker-role;
+  fetch {
+    "id": $s.id,
+    "name": $s.name,
+    "description": $s.description,
+    "target_role": $s.jhunt-target-role,
+    "industries": $s.jhunt-target-industries,
+    "salary": $s.jhunt-salary-expectations,
+    "location_pref": $s.jhunt-location-preference,
+    "focus": $s.jhunt-search-focus,
+    "created": $s.created-at,
+    "started": $s.alh-role-started-on,
+    "role_status": $s.alh-role-status
+  };
+target_check: |
+  match $x isa career-agent-role, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-agent-role,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has name $name;
+optional_attrs:
+  description: description
+  target_role: career-target-role
+  industries: career-target-industries
+  salary: career-salary-expectations
+  location_pref: career-location-preference
+  focus: career-search-focus
+  created: created-at
+  started: alh-role-started-on
+  role_status: alh-role-status

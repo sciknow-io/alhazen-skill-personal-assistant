@@ -1,0 +1,122 @@
+name: advisor
+description: "Strategic thought partner — board of advisor personas that debate then converge, bias checks, scenario stress-tests, and a decision journal"
+license: Apache-2.0
+compatibility: "Requires uv and TypeDB 3.x running (alh_personal database)"
+
+# Core files
+scripts:
+  - advisor.py
+typedb_schema: schema.tql
+schema:
+  namespace: advsr
+  depends_on: []
+
+# Dependencies
+requires:
+  bins: [uv]
+  env: [TYPEDB_HOST, TYPEDB_PORT, TYPEDB_DATABASE]
+  optional_env: []
+
+# TypeDB namespaces
+namespaces:
+  - schema.tql
+
+# Design pattern
+pattern: deliberation
+phases:
+  - framing: "Open decision with primer brain dump + interview"
+  - debating: "Independent takes per advisor, then challenge-then-converge debate"
+  - deciding: "Bias check, operator decides matched to their decision style"
+  - decided: "Scenario stress-tests, journal note + review date"
+  - reviewed: "Review workflow closes the loop, feeds context docs"
+
+# Core operations
+operations:
+  # Board management
+  - add-advisor
+  - list-advisors
+  - retire-advisor
+
+  # Personal context system
+  - add-context
+  - list-context
+
+  # Decision workflow
+  - open-decision
+  - add-note
+  - add-take
+  - add-debate
+  - add-bias-check
+  - add-scenario
+  - decide
+  - review-decision
+
+  # Queries & reports
+  - list-decisions
+  - show-decision
+  - report-decision
+  - report-board
+  - audit
+
+# Entity types
+entities:
+  things:
+    - advsr-advisor
+    - advsr-decision
+  collections:
+    - advsr-board
+  artifacts:
+    - advsr-context-doc
+  fragments:
+    - advsr-scenario
+  notes:
+    - advsr-primer-note
+    - advsr-interview-note
+    - advsr-take-note
+    - advsr-debate-note
+    - advsr-bias-note
+    - advsr-journal-note
+
+# Status values
+status_values:
+  - framing
+  - debating
+  - deciding
+  - decided
+  - reviewed
+
+# Stakes levels
+stakes_levels:
+  - low
+  - medium
+  - high
+  - irreversible
+
+# Pushback levels
+pushback_levels:
+  - gentle
+  - firm
+  - relentless
+
+# Dashboard
+dashboard:
+  enabled: true
+  name: "Advisor Dashboard"
+  url_path: "/advisor"
+  description: "Decisions kanban, board roster, and decision journal with reviews due"
+  views:
+    - name: Advisor Hub
+      path: /advisor
+      description: "Decisions board, board roster cards, and journal tabs"
+    - name: Decision Detail
+      path: /advisor/decision/{id}
+      description: "Takes per advisor, debate, bias check, scenario matrix, journal"
+  internal:
+    pages: dashboard/pages/advisor/
+    components: dashboard/components/
+    api_routes: dashboard/routes/
+    lib: dashboard/lib.ts
+
+# Integration with other skills
+integrates_with:
+  - typedb-notebook

@@ -1,0 +1,73 @@
+view: decision
+primary_type: advsr-decision
+label: "Decision"
+label_plural: "Decisions"
+url_path: /advisor/decision/[id]
+nav_parent: hub
+
+browse:
+  label_field: name
+  subtitle_field: question
+  status_field: decision-status
+  status_values: [framing, debating, deciding, decided, reviewed]
+  sort_default: created-at
+  filter_axis: decision-status
+
+detail:
+  header:
+    title_field: name
+    subtitle_field: question
+    status_field: decision-status
+    badge_fields:
+      - {field: stakes, label: "Stakes"}
+      - {field: operator-style, label: "Operator style"}
+  quick_info:
+    - {field: question,     label: "Question",    icon: HelpCircle, format: plain}
+    - {field: stakes,       label: "Stakes",      icon: Flame,      format: badge}
+    - {field: outcome,      label: "Outcome",     icon: CheckCircle, format: plain}
+    - {field: review-date,  label: "Review Date", icon: CalendarClock, format: date}
+  layout: two_column
+  main_column:
+    - kind: notes_group
+      name: "Primer & Interview"
+      source_note_types: [advsr-primer-note, advsr-interview-note]
+      via_relation: alh-aboutness
+      via_role: subject
+      show_content: true
+      collapsible: true
+    - kind: special_panel
+      name: "Independent Takes"
+      source_note_type: advsr-take-note
+      via_relation: alh-aboutness
+      group_by_relation: advsr-take-by
+      group_role: advisor
+      fields: [advisor, archetype, stance, content]
+      notes: "One panel per advisor; stance shown as a badge (for/against/conditional/reframe)."
+    - kind: special_panel
+      name: "Debate (challenge → converge)"
+      source_note_type: advsr-debate-note
+      show_content: true
+    - kind: special_panel
+      name: "Bias Check"
+      source_note_type: advsr-bias-note
+      show_content: true
+    - kind: table
+      name: "Scenario Stress-Tests"
+      via_relation: advsr-scenario-for
+      via_role: decision
+      target_role: scenario
+      target_type: advsr-scenario
+      component: ScenarioMatrix
+      columns:
+        - {field: scenario-condition,  label: "Condition",  format: plain}
+        - {field: scenario-likelihood, label: "Likelihood", format: badge}
+        - {field: scenario-impact,     label: "Impact",     format: plain}
+  side_column:
+    - kind: notes_group
+      name: "Journal"
+      source_note_type: advsr-journal-note
+      via_relation: alh-aboutness
+      via_role: subject
+      show_type_icons: true
+      collapsible: false
+      notes: "Decision journal entries and the review record, newest last."

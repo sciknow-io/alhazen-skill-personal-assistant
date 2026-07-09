@@ -1,0 +1,119 @@
+# Analyst Skill — Data Quality Checks
+# ====================================
+# Declarative audit rules executed by the analyst.py audit command.
+# Each check defines a TypeQL query to find violations, a severity,
+# and a root cause analysis with prevention fix.
+#
+# Run: uv run python skills/analyst/analyst.py audit
+# Filter: uv run python skills/analyst/analyst.py audit --severity high
+
+skill: analyst
+version: 1
+repo: sciknow-io/alhazen-skill-personal-assistant
+
+checks:
+  # ── Workflow Integrity ────────────────────────────────────────
+
+  - name: missions-without-decision-context
+    category: workflow-integrity
+    severity: high
+    description: "Missions without a decision-context (research must serve a decision, not a search query)"
+    find_violations: |
+      match $m isa anlst-mission, has id $id, has name $n;
+      not { $m has anlst-decision-context $dc; };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $m isa anlst-mission, has id $id;
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Interview the operator for the decision at stake, then update-mission --decision-context"
+    root_cause:
+      component: prompt
+      file: SKILL.md
+      description: "Mission created from a raw query without the briefing interview; create-mission allows omitting --decision-context (with a warning) so capture is never blocked"
+      prevention: "SKILL.md step 1-2: never leave the briefing stage without a decision-context; the create-mission warning must be acted on"
+      test: "create-mission without --decision-context emits a warning in its JSON output"
+
+  - name: delivered-without-gate
+    category: workflow-integrity
+    severity: high
+    description: "Missions marked delivered with no three-question gate note recorded"
+    find_violations: |
+      match $m isa anlst-mission, has id $id, has name $n, has anlst-mission-status "delivered";
+      not { (note: $g, subject: $m) isa alh-aboutness; $g isa anlst-gate-note; };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $m isa anlst-mission, has id $id, has anlst-mission-status "delivered";
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Run the three-question gate with the operator (record-gate) or move the mission back to verifying"
+    root_cause:
+      component: prompt
+      file: SKILL.md
+      description: "Agent set status delivered via update-mission without going through record-gate"
+      prevention: "SKILL.md step 8: the gate is an operator checkpoint; only record-gate --passed moves a mission to gated, and delivery follows gating"
+      test: "update-mission --status delivered on an ungated mission should be flagged by this audit"
+
+  # ── Verification ──────────────────────────────────────────────
+
+  - name: findings-unverified
+    category: verification
+    severity: medium
+    description: "Findings still unverified (fresh-thread verification not done)"
+    find_violations: |
+      match $f isa anlst-finding, has id $id, has anlst-claim $c, has anlst-verification-status "unverified";
+      fetch { "id": $id, "claim": $c };
+    count_total: |
+      match $f isa anlst-finding, has id $id;
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Open a FRESH thread (no generation context), hand it claims + sources, record verify-finding for each"
+    root_cause:
+      component: convention
+      description: "Findings recorded during runs default to unverified; verification is a separate later pass that can be forgotten"
+      prevention: "SKILL.md step 7: list-findings --unverified is the verification worklist; clear it before the gate"
+
+  - name: single-run-missions
+    category: workflow-integrity
+    severity: medium
+    description: "Missions past planning with fewer than two research runs (wisdom of the crowd requires 3+)"
+    find_violations: |
+      match $m isa anlst-mission, has id $id, has name $n;
+      (mission: $m, run: $r1) isa anlst-mission-run;
+      not {
+        (mission: $m, run: $r2) isa anlst-mission-run;
+        $r1 has id $rid1; $r2 has id $rid2; $rid1 != $rid2;
+      };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $m isa anlst-mission, has id $id;
+      (mission: $m, run: $r) isa anlst-mission-run;
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Fan out additional independent runs (same prompt, different models/instances) before aggregating"
+    root_cause:
+      component: prompt
+      file: SKILL.md
+      description: "Agent ran a single research thread and moved on - one thread's output is one sample, not an answer"
+      prevention: "SKILL.md step 4: register at least three runs before recording any findings"
+      test: "A mission with one run should be flagged; a mission with three runs should not"
+
+  # ── Evidence ──────────────────────────────────────────────────
+
+  - name: confirmed-findings-without-sources
+    category: evidence
+    severity: medium
+    description: "Findings marked confirmed with no linked evidence source"
+    find_violations: |
+      match $f isa anlst-finding, has id $id, has anlst-claim $c, has anlst-verification-status "confirmed";
+      not { (finding: $f, source: $s) isa anlst-finding-source; };
+      fetch { "id": $id, "claim": $c };
+    count_total: |
+      match $f isa anlst-finding, has id $id, has anlst-verification-status "confirmed";
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "link-source the evidence that justified confirmation, or downgrade to needs-work"
+    root_cause:
+      component: convention
+      description: "verify-finding does not require a source link; 'confirmed' without evidence is pattern-matching"
+      prevention: "SKILL.md step 7: confirmation must cite the source checked; link it before recording confirmed"

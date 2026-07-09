@@ -1,0 +1,79 @@
+view: mission
+primary_type: anlst-mission
+label: "Mission"
+label_plural: "Missions"
+url_path: /analyst/mission/[id]
+nav_parent: hub
+
+browse:
+  label_field: name
+  status_field: anlst-mission-status
+  status_values:
+    [briefing, planning, running, aggregating, verifying, gated, delivered]
+  sort_default: created-at
+  filter_axis: anlst-mission-status
+
+detail:
+  header:
+    title_field: name
+    status_field: anlst-mission-status
+    priority_field: anlst-priority-level
+  quick_info:
+    - {field: anlst-decision-context, label: "Decision",     icon: Scale,    format: plain}
+    - {field: anlst-time-horizon,     label: "Time Horizon", icon: Clock,    format: plain}
+    - {field: anlst-source-policy,    label: "Source Policy",icon: Shield,   format: plain}
+    - {field: anlst-exclusions,       label: "Exclusions",   icon: Ban,      format: plain}
+    - {field: anlst-deadline,         label: "Deadline",     icon: Calendar, format: date}
+    - {field: anlst-decision-ref,     label: "Advisor Decision", icon: Link, format: soft_ref}
+  layout: two_column
+  main_column:
+    - kind: special_panel
+      name: "Consensus Matrix"
+      component: ConsensusMatrix
+      notes: >
+        Findings x runs matrix: rows are findings (claim, consensus-count,
+        divergent flag), columns are runs (model name). A cell is checked when
+        that run yielded the finding. Each row carries a verification badge
+        (unverified/confirmed/refuted/needs-work) and divergent rows are
+        highlighted for investigation.
+      data:
+        findings_source: show-mission.findings   # includes run_ids per finding
+        runs_source: show-mission.runs
+    - kind: special_panel
+      name: "Three-Question Gate"
+      component: GatePanel
+      notes: >
+        Shows the latest anlst-gate-note: the three answers (grounded, missing,
+        name-on-it) and a PASSED/FAILED badge. Empty state warns that ungated
+        research must not be delivered.
+      data:
+        source: show-mission.gate
+    - kind: table
+      name: "Deliverables"
+      via_relation: anlst-mission-deliverable
+      via_role: mission
+      target_role: deliverable
+      target_type: anlst-deliverable
+      columns:
+        - {field: name,                     label: "Deliverable", format: plain}
+        - {field: anlst-deliverable-format, label: "Format",      format: badge}
+        - {field: created-at,               label: "Created",     format: date}
+  side_column:
+    - kind: table
+      name: "Runs"
+      via_relation: anlst-mission-run
+      via_role: mission
+      target_role: run
+      target_type: anlst-run
+      columns:
+        - {field: anlst-model-name,   label: "Model",     format: plain}
+        - {field: anlst-run-status,   label: "Status",    format: badge}
+        - {field: anlst-started-at,   label: "Started",   format: date}
+        - {field: anlst-completed-at, label: "Completed", format: date}
+    - kind: notes_group
+      via_relation: alh-aboutness
+      via_role: subject
+      note_types:
+        [anlst-primer-note, anlst-interview-note, anlst-plan-note, anlst-synthesis-note]
+      show_type_icons: true
+      collapsible: true

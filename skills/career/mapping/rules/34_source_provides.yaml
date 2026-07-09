@@ -1,0 +1,23 @@
+name: source_provides
+description: Rebuild source-provides links
+depends_on: [search_sources, candidates]
+idempotent: true
+source_match: |
+  match
+    (source: $src, candidate: $c) isa jhunt-source-provides;
+  fetch {
+    "source_id": $src.id,
+    "candidate_id": $c.id
+  };
+target_check: |
+  match
+    $ts isa career-search-source, has career-legacy-id $source_id;
+    $tc isa career-candidate, has career-legacy-id $candidate_id;
+    (source: $ts, candidate: $tc) isa career-source-provides;
+  fetch { "x": 1 };
+target_insert: |
+  match
+    $ts isa career-search-source, has career-legacy-id $source_id;
+    $tc isa career-candidate, has career-legacy-id $candidate_id;
+  insert
+    (source: $ts, candidate: $tc) isa career-source-provides;

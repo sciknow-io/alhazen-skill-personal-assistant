@@ -1,0 +1,27 @@
+name: strategy_notes
+description: Map jhunt-strategy-note to career-strategy-note
+depends_on: []
+idempotent: true
+skolem_prefix: note
+skolem_keys: [id]
+datetime_attrs: [created-at]
+source_match: |
+  match
+    $s isa jhunt-strategy-note;
+  fetch {
+    "id": $s.id,
+    "content": $s.content,
+    "name": $s.name,
+    "created": $s.created-at
+  };
+target_check: |
+  match $x isa career-strategy-note, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-strategy-note,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has content $content;
+optional_attrs:
+  name: name
+  created: created-at

@@ -1,0 +1,59 @@
+hub: scribe
+label: "Scribe Dashboard"
+url_path: /scribe
+notes: >
+  Pieces board loads first (default tab). Voice Profile and Personas tabs
+  load lazily on first switch. Piece cards link to /scribe/piece/{id}.
+
+tabs:
+  - id: pieces
+    label: "Pieces"
+    icon: PenLine
+    kind: view_board
+    entity_view: piece
+    board_axis: scribe-piece-status
+    board_column_order:
+      - planning
+      - drafting
+      - persona-review
+      - operator-review
+      - final
+      - shipped
+    card_fields: [name, scribe-piece-type, scribe-deadline, draft_count, latest_version]
+    component: PiecesBoard
+    cli_command: list-pieces
+    cli_script: scribe.py
+    inline_actions:
+      - {label: "Start Drafting",    sets_field: scribe-piece-status, value: drafting}
+      - {label: "Persona Review",    sets_field: scribe-piece-status, value: persona-review}
+      - {label: "Operator Review",   sets_field: scribe-piece-status, value: operator-review}
+      - {label: "Mark Final",        sets_field: scribe-piece-status, value: final}
+      - {label: "Shipped",           sets_field: scribe-piece-status, value: shipped}
+
+  - id: profile
+    label: "Voice Profile"
+    icon: Fingerprint
+    kind: computed_aggregate
+    cli_command: show-profile
+    cli_script: scribe.py
+    load: lazy
+    component: VoiceProfilePanel
+    notes: >
+      Output: { profile: {id, name, status, genre}, style_guide: {id, content},
+      samples: [{id, name, kind, doc_type, why_it_works}],
+      analyses: [{id, name, content, created_at}] }.
+      Style guide content rendered as markdown; samples grouped by kind
+      (own vs aspirational); analyses collapsible.
+
+  - id: personas
+    label: "Personas"
+    icon: Users
+    kind: entity_table
+    entity_type: scribe-persona
+    cli_command: list-personas
+    cli_script: scribe.py
+    load: lazy
+    component: PersonaCards
+    notes: >
+      Rendered as cards, one per persona: cares-about, skeptical-of,
+      action-drivers, reading-context, plus count of pieces targeting it.

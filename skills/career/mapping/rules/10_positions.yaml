@@ -1,0 +1,47 @@
+name: positions
+description: Map jhunt-position to career-position
+depends_on: []
+idempotent: true
+skolem_prefix: position
+skolem_keys: [id]
+datetime_attrs: [created-at, career-applied-date, career-response-date, career-deadline]
+source_match: |
+  match
+    $s isa jhunt-position;
+  fetch {
+    "id": $s.id,
+    "name": $s.name,
+    "status": $s.jhunt-opportunity-status,
+    "priority": $s.jhunt-priority-level,
+    "short_name": $s.jhunt-short-name,
+    "job_url": $s.jhunt-job-url,
+    "location": $s.alh-location,
+    "salary": $s.jhunt-salary-range,
+    "remote": $s.jhunt-remote-policy,
+    "team_size": $s.jhunt-team-size,
+    "applied": $s.jhunt-applied-date,
+    "response": $s.jhunt-response-date,
+    "deadline": $s.jhunt-deadline,
+    "created": $s.created-at
+  };
+target_check: |
+  match $x isa career-position, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-position,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has name $name;
+optional_attrs:
+  status: career-opportunity-status
+  priority: career-priority-level
+  short_name: career-short-name
+  job_url: career-job-url
+  location: alh-location
+  salary: career-salary-range
+  remote: career-remote-policy
+  team_size: career-team-size
+  applied: career-applied-date
+  response: career-response-date
+  deadline: career-deadline
+  created: created-at

@@ -1,0 +1,23 @@
+name: opportunity_at_organization
+description: Rebuild opportunity-at-organization links
+depends_on: [positions, ventures, leads, companies]
+idempotent: true
+source_match: |
+  match
+    (opportunity: $o, organization: $c) isa jhunt-opportunity-at-organization;
+  fetch {
+    "opportunity_id": $o.id,
+    "company_id": $c.id
+  };
+target_check: |
+  match
+    $to isa career-opportunity, has career-legacy-id $opportunity_id;
+    $tc isa career-company, has career-legacy-id $company_id;
+    (opportunity: $to, organization: $tc) isa career-opportunity-at-organization;
+  fetch { "x": 1 };
+target_insert: |
+  match
+    $to isa career-opportunity, has career-legacy-id $opportunity_id;
+    $tc isa career-company, has career-legacy-id $company_id;
+  insert
+    (opportunity: $to, organization: $tc) isa career-opportunity-at-organization;

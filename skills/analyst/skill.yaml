@@ -1,0 +1,122 @@
+name: analyst
+description: 'AI research analyst: decision-framed research missions, multi-thread
+  consensus, independent verification, three-question gate, and deliverables beyond
+  walls of text'
+license: Apache-2.0
+compatibility: Requires uv and TypeDB 3.x running (alh_personal database)
+scripts:
+- analyst.py
+typedb_schema: schema.tql
+schema:
+  namespace: anlst
+  depends_on: []
+requires:
+  bins:
+  - uv
+  env:
+  - TYPEDB_HOST
+  - TYPEDB_PORT
+  - TYPEDB_DATABASE
+  optional_env: []
+namespaces:
+- schema.tql
+pattern: curation
+phases:
+- briefing: Capture the operator's primer and decision context
+- interviewing: Agent interviews the operator to surface unknown-unknowns
+- planning: Research plan drafted and operator-approved before execution
+- running: 3+ independent parallel research runs, same prompt
+- aggregating: Agent matches claims across runs; consensus recorded
+- verifying: Fresh-thread verification of findings
+- gating: Three-question gate before delivery
+- delivering: Deliverable in the format that will actually get used
+operations:
+- create-mission
+- add-interview
+- add-plan
+- update-mission
+- list-missions
+- show-mission
+- add-run
+- complete-run
+- add-finding
+- link-source
+- list-findings
+- record-consensus
+- verify-finding
+- record-gate
+- add-deliverable
+- report-mission
+- audit
+- list-engines
+- add-question
+- list-questions
+- update-question
+- dispatch
+- ingest-report
+entities:
+  things:
+  - anlst-mission
+  - anlst-run
+  artifacts:
+  - anlst-source
+  - anlst-deliverable
+  fragments:
+  - anlst-finding
+  - anlst-question
+  notes:
+  - anlst-primer-note
+  - anlst-interview-note
+  - anlst-plan-note
+  - anlst-verification-note
+  - anlst-gate-note
+  - anlst-synthesis-note
+status_values:
+- briefing
+- planning
+- running
+- aggregating
+- verifying
+- gated
+- delivered
+priority_levels:
+- high
+- medium
+- low
+verification_statuses:
+- unverified
+- confirmed
+- refuted
+- needs-work
+deliverable_formats:
+- brief
+- dashboard
+- infographic
+- interactive-page
+- audio-summary
+dashboard:
+  enabled: true
+  name: Analyst Dashboard
+  url_path: /analyst
+  description: Missions board, consensus matrix, findings triage, gate status, deliverables
+  views:
+  - name: Missions Board
+    path: /analyst
+    description: Kanban of missions by mission-status, plus findings and deliverables
+      tabs
+  - name: Mission Detail
+    path: /analyst/mission/{id}
+    description: Consensus matrix (findings x runs), verification badges, gate status
+  internal:
+    pages: dashboard/pages/analyst/
+    components: dashboard/components/
+    api_routes: dashboard/routes/
+    lib: dashboard/lib.ts
+integrates_with:
+- typedb-notebook
+- advisor
+- deep-research
+- tech-recon
+- scientific-literature
+- chief-of-staff
+engines_config: engines.yaml

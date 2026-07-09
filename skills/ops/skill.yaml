@@ -1,0 +1,120 @@
+name: ops
+description: "Operational powerhouse — recurring briefs (manual-before-automate), stakeholder CRM with undercurrents, meeting prep, commitments, and monitors"
+license: Apache-2.0
+compatibility: "Requires uv and TypeDB 3.x running (alh_personal database)"
+
+# Core files
+scripts:
+  - ops.py
+typedb_schema: schema.tql
+schema:
+  namespace: ops
+  depends_on: []
+
+# Dependencies
+requires:
+  bins: [uv]
+  env: [TYPEDB_HOST, TYPEDB_PORT, TYPEDB_DATABASE]
+  optional_env: []
+
+# TypeDB namespaces
+namespaces:
+  - schema.tql
+
+# Design pattern
+pattern: curation
+phases:
+  - design: "Dream-first brief/monitor design with primer + operator interview"
+  - trial: "Manual production and consumption of briefs (iron rule, enforced in code)"
+  - capture: "Touchpoints with undercurrents, commitments, monitor checks"
+  - synthesis: "Claude writes briefs and prep packs from stored context"
+  - reporting: "today / report-today morning surface + dashboard"
+
+# Core operations
+operations:
+  # Brief lifecycle
+  - add-spec
+  - list-specs
+  - log-brief
+  - list-briefs
+  - promote-spec
+  - retire-spec
+
+  # Stakeholder CRM
+  - add-person
+  - add-dossier
+  - list-stakeholders
+  - show-stakeholder
+  - log-touchpoint
+  - prep-meeting
+  - save-prep
+
+  # Commitments
+  - add-commitment
+  - update-commitment
+  - list-commitments
+
+  # Monitors
+  - add-monitor
+  - list-monitors
+  - update-monitor
+
+  # Synthesis
+  - today
+  - report-today
+  - add-note
+  - audit
+
+# Entity types
+entities:
+  things:
+    - ops-brief-spec
+    - ops-dossier
+    - ops-commitment
+    - ops-monitor
+  notes:
+    - ops-brief
+    - ops-touchpoint
+    - ops-meeting-prep
+    - ops-primer-note
+    - ops-interview-note
+
+# Status values
+spec_statuses:
+  - designed
+  - trial
+  - active
+  - retired
+commitment_statuses:
+  - open
+  - done
+  - dropped
+  - overdue
+monitor_statuses:
+  - active
+  - paused
+  - retired
+
+# Dashboard
+dashboard:
+  enabled: true
+  name: "Ops Dashboard"
+  url_path: "/ops"
+  description: "Today panel, brief specs with trial progress, stakeholder CRM, commitments board, monitors"
+  views:
+    - name: Hub
+      path: /ops
+      description: "Tabs: Today, Briefs, Stakeholders, Commitments, Monitors"
+    - name: Stakeholder Detail
+      path: /ops/stakeholder/{id}
+      description: "Dossier, touchpoint timeline, commitments"
+  internal:
+    pages: dashboard/pages/ops/
+    components: dashboard/components/
+    api_routes: dashboard/routes/
+    lib: dashboard/lib.ts
+
+# Integration with other skills
+integrates_with:
+  - typedb-notebook
+  - career   # shares alh-person; ops dossiers enrich career people and vice versa

@@ -1,0 +1,17 @@
+{
+  "name": "career",
+  "display_name": "Career Notebook",
+  "description": "Manage your career graph — people, collaborators, projects, and potential new positions — plus the opportunity pipeline, skill gaps, and learning plan.",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "dependencies": [
+    {
+      "name": "alhazen-core",
+      "marketplace": "skillful-alhazen"
+    },
+    {
+      "name": "typedb-notebook",
+      "marketplace": "skillful-alhazen"
+    }
+  ]
+}

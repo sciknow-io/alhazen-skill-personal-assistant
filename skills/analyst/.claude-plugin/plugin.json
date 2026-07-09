@@ -1,0 +1,17 @@
+{
+  "name": "analyst",
+  "display_name": "Research Analyst",
+  "description": "AI research analyst: decision-framed research missions, multi-thread consensus, independent verification, and the three-question gate.",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "dependencies": [
+    {
+      "name": "alhazen-core",
+      "marketplace": "skillful-alhazen"
+    },
+    {
+      "name": "typedb-notebook",
+      "marketplace": "skillful-alhazen"
+    }
+  ]
+}

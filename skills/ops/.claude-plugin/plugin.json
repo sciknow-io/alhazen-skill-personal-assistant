@@ -1,0 +1,17 @@
+{
+  "name": "ops",
+  "display_name": "Operational Powerhouse",
+  "description": "Recurring briefs with a manual-before-automate iron rule, stakeholder CRM with undercurrents, personalized meeting prep, commitment tracking, and standing monitors.",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "dependencies": [
+    {
+      "name": "alhazen-core",
+      "marketplace": "skillful-alhazen"
+    },
+    {
+      "name": "typedb-notebook",
+      "marketplace": "skillful-alhazen"
+    }
+  ]
+}

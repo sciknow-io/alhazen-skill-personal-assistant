@@ -1,0 +1,37 @@
+name: engagements
+description: Map jhunt-engagement to career-engagement (template; zero rows at authoring time)
+depends_on: []
+idempotent: true
+skolem_prefix: engagement
+skolem_keys: [id]
+datetime_attrs: [created-at]
+source_match: |
+  match
+    $s isa jhunt-engagement;
+  fetch {
+    "id": $s.id,
+    "name": $s.name,
+    "description": $s.description,
+    "status": $s.jhunt-opportunity-status,
+    "priority": $s.jhunt-priority-level,
+    "etype": $s.jhunt-engagement-type,
+    "rate": $s.jhunt-rate-info,
+    "short_name": $s.jhunt-short-name,
+    "created": $s.created-at
+  };
+target_check: |
+  match $x isa career-engagement, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-engagement,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has name $name;
+optional_attrs:
+  description: description
+  status: career-opportunity-status
+  priority: career-priority-level
+  etype: career-engagement-type
+  rate: career-rate-info
+  short_name: career-short-name
+  created: created-at

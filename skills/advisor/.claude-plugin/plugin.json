@@ -1,0 +1,17 @@
+{
+  "name": "advisor",
+  "display_name": "Strategic Advisor Board",
+  "description": "Strategic thought partner: board of advisor personas that debate then converge, bias checks, scenario stress-tests, and a decision journal.",
+  "version": "0.1.0",
+  "license": "Apache-2.0",
+  "dependencies": [
+    {
+      "name": "alhazen-core",
+      "marketplace": "skillful-alhazen"
+    },
+    {
+      "name": "typedb-notebook",
+      "marketplace": "skillful-alhazen"
+    }
+  ]
+}

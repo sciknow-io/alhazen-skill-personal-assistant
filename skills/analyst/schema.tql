@@ -1,0 +1,212 @@
+# =============================================================================
+# ANALYST NAMESPACE (anlst-) - TypeDB 3.x Schema Extension
+# =============================================================================
+# The AI research analyst: decision-framed research missions, multi-thread
+# "wisdom of the crowd" runs, consensus aggregation, independent verification,
+# the three-question gate, and deliverables beyond walls of text.
+# Namespace prefix: anlst-*
+# =============================================================================
+
+define
+
+# -----------------------------------------------------------------------------
+# ATTRIBUTE TYPES - Analyst Specific
+# -----------------------------------------------------------------------------
+
+# Mission briefing attributes
+attribute anlst-decision-context, value string;   # the decision this research serves
+attribute anlst-time-horizon, value string;       # e.g. "next 6 months", "2026-2028"
+attribute anlst-source-policy, value string;      # source priority / reliability standards
+attribute anlst-exclusions, value string;         # what NOT to include
+attribute anlst-mission-status, value string;
+# Status values: briefing | planning | running | aggregating | verifying | gated | delivered
+attribute anlst-priority-level, value string;     # high | medium | low
+attribute anlst-deadline, value datetime;
+# Soft cross-namespace reference to an advsr-decision (advisor skill). No
+# cross-plugin schema dependency: the id is resolvable against the advisor
+# namespace in the same database, stored here as a plain string.
+attribute anlst-decision-ref, value string;
+
+# Run attributes (one research thread = one model/session)
+attribute anlst-model-name, value string;         # e.g. "claude-opus", "gpt-5", "session-2"
+attribute anlst-run-status, value string;         # dispatched | running | completed | failed
+# Engine dispatch (the analyst commissions research engines; see engines.yaml)
+attribute anlst-engine, value string;             # deep-research | tech-recon | scientific-literature | ad-hoc
+attribute anlst-external-ref, value string;       # engine-side handle: trec-investigation id, corpus id, report path/URL
+# Research questions the mission frames for the engines
+attribute anlst-question-text, value string;
+attribute anlst-question-status, value string;    # draft | approved | dispatched | answered
+attribute anlst-started-at, value datetime;
+attribute anlst-completed-at, value datetime;
+
+# Finding attributes (one discrete claim)
+attribute anlst-claim, value string;
+attribute anlst-confidence-level, value string;   # high | medium | low
+attribute anlst-consensus-count, value integer;   # how many runs asserted this claim
+attribute anlst-divergent, value boolean;         # true = single-thread / contested claim
+attribute anlst-verification-status, value string;
+# Verification values: unverified | confirmed | refuted | needs-work
+
+# Source attributes (evidence)
+attribute anlst-source-url, value string;
+attribute anlst-source-kind, value string;        # primary | academic | news | vendor | social | other
+attribute anlst-reliability, value string;        # high | medium | low
+
+# Deliverable attributes
+attribute anlst-deliverable-format, value string;
+# Format values: brief | dashboard | infographic | interactive-page | audio-summary
+
+# Three-question gate attributes (on anlst-gate-note)
+attribute anlst-gate-grounded, value string;      # Q1: grounded in real sources or pattern-matching?
+attribute anlst-gate-missing, value string;       # Q2: what's missing that I didn't think to ask?
+attribute anlst-gate-name-on-it, value string;    # Q3: would I put my name on this?
+attribute anlst-gate-passed, value boolean;
+
+
+# -----------------------------------------------------------------------------
+# RELATION TYPES - defined before entities so role names resolve in plays clauses
+# -----------------------------------------------------------------------------
+
+# MISSION-RUN - A mission fans out into parallel research runs
+relation anlst-mission-run,
+    relates mission,
+    relates run;
+
+# RUN-YIELDED - A run produced a finding
+relation anlst-run-yielded,
+    relates run,
+    relates finding;
+
+# FINDING-SOURCE - A finding is evidenced by a source
+relation anlst-finding-source,
+    relates finding,
+    relates source;
+
+# MISSION-DELIVERABLE - A mission produced a deliverable
+relation anlst-mission-deliverable,
+    relates mission,
+    relates deliverable;
+
+# MISSION-QUESTION - The questions a mission frames for the research engines
+relation anlst-mission-question,
+    relates mission,
+    relates question;
+
+# RUN-ANSWERS - Which questions a dispatched engine run addresses
+relation anlst-run-answers,
+    relates run,
+    relates question;
+
+# RUN-REPORT - The engine's report, captured verbatim as a source artifact
+relation anlst-run-report,
+    relates run,
+    relates report;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Analyst Things
+# -----------------------------------------------------------------------------
+
+# ANLST-MISSION - The research engagement, always framed by a decision
+entity anlst-mission sub alh-domain-thing,
+    owns anlst-decision-context,
+    owns anlst-time-horizon,
+    owns anlst-source-policy,
+    owns anlst-exclusions,
+    owns anlst-mission-status,
+    owns anlst-priority-level,
+    owns anlst-deadline,
+    owns anlst-decision-ref,
+    plays anlst-mission-run:mission,
+    plays anlst-mission-question:mission,
+    plays anlst-mission-deliverable:mission;
+
+# ANLST-RUN - One dispatch to a research engine (or one ad-hoc research thread).
+# The engine and external handle make the analyst->engine relationship explicit;
+# allowed engines are declared in engines.yaml.
+entity anlst-run sub alh-domain-thing,
+    owns anlst-model-name,
+    owns anlst-engine,
+    owns anlst-external-ref,
+    owns anlst-run-status,
+    owns anlst-started-at,
+    owns anlst-completed-at,
+    plays anlst-mission-run:run,
+    plays anlst-run-answers:run,
+    plays anlst-run-report:run,
+    plays anlst-run-yielded:run;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Analyst Fragments
+# -----------------------------------------------------------------------------
+
+# ANLST-QUESTION - A decision-framed research question commissioned to an engine
+entity anlst-question sub alh-fragment,
+    owns anlst-question-text,
+    owns anlst-question-status,
+    plays anlst-mission-question:question,
+    plays anlst-run-answers:question;
+
+# ANLST-FINDING - One discrete claim extracted from a run
+entity anlst-finding sub alh-fragment,
+    owns anlst-claim,
+    owns anlst-confidence-level,
+    owns anlst-consensus-count,
+    owns anlst-divergent,
+    owns anlst-verification-status,
+    plays anlst-run-yielded:finding,
+    plays anlst-finding-source:finding;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Analyst Artifacts
+# -----------------------------------------------------------------------------
+
+# ANLST-SOURCE - Evidence backing findings. Kind "engine-report" marks a
+# research engine's report captured verbatim (linked to its run via
+# anlst-run-report); other kinds are individual cited sources.
+entity anlst-source sub alh-artifact,
+    owns anlst-source-url,
+    owns anlst-source-kind,
+    owns anlst-reliability,
+    plays anlst-finding-source:source,
+    plays anlst-run-report:report;
+
+# ANLST-DELIVERABLE - Output of a mission (not always a wall of text)
+entity anlst-deliverable sub alh-artifact,
+    owns anlst-deliverable-format,
+    plays anlst-mission-deliverable:deliverable;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Analyst Notes
+# -----------------------------------------------------------------------------
+# All notes attach to their subject via alh-aboutness (note: $n, subject: $s).
+
+# Operator's messy initial brain dump (operating principle 1 & 2)
+entity anlst-primer-note sub alh-note;
+
+# Record of the agent-interviews-operator step (operating principle 3)
+entity anlst-interview-note sub alh-note;
+
+# The approved research plan (operating principle 4: plan/execute split)
+entity anlst-plan-note sub alh-note;
+
+# Fresh-thread verification record for a finding
+entity anlst-verification-note sub alh-note;
+
+# Three-question gate record: three answers + pass/fail
+entity anlst-gate-note sub alh-note,
+    owns anlst-gate-grounded,
+    owns anlst-gate-missing,
+    owns anlst-gate-name-on-it,
+    owns anlst-gate-passed;
+
+# Cross-run synthesis (consensus narrative, divergence analysis)
+entity anlst-synthesis-note sub alh-note;
+
+
+# =============================================================================
+# END ANALYST NAMESPACE
+# =============================================================================

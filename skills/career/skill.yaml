@@ -1,0 +1,184 @@
+name: career
+description: "Manage your career graph — people, collaborators, projects, and potential new positions — plus the opportunity pipeline, skill gaps, and learning plan"
+license: Apache-2.0
+compatibility: "Requires uv, docker, TypeDB 2.x running, and internet access for job posting URLs"
+
+# Core files
+scripts:
+  - career.py
+  - career_forager.py
+typedb_schema: schema.tql
+schema:
+  namespace: career
+  depends_on: []
+
+# Dependencies
+requires:
+  bins: [uv, docker]
+  env: [TYPEDB_HOST, TYPEDB_PORT, TYPEDB_DATABASE]
+  optional_env: [ALHAZEN_CACHE_DIR, SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASSWORD, DIGEST_TO, DIGEST_FROM]
+
+# TypeDB namespaces
+namespaces:
+  - schema.tql
+
+# Design pattern
+pattern: curation
+phases:
+  - foraging: "Discover job postings"
+  - ingestion: "Fetch and store raw job descriptions"
+  - sensemaking: "Claude analyzes content and extracts structured data"
+  - analysis: "Query across notes for insights"
+  - reporting: "Dashboard views and recommendations"
+
+# Core operations
+operations:
+  # Skill profile management
+  - add-skill
+  - list-skills
+  
+  # Job ingestion
+  - ingest-job
+  - list-artifacts
+  - show-artifact
+  
+  # Entity management
+  - add-company
+  - add-position
+  - add-requirement
+  - add-note
+  - add-resource
+  
+  # Application tracking
+  - update-status
+  - list-pipeline
+  - show-position
+  - show-company
+  - show-gaps
+  - learning-plan
+  
+  # Career graph (people, collaborators, projects)
+  - add-person
+  - list-people
+  - show-person
+  - add-project
+  - list-projects
+  - update-project
+  - link-collaborator
+  - list-collaborators
+
+  # Legacy migration
+  - migrate-from-jobhunt
+
+  # Search and tagging
+  - tag
+  - search-tag
+
+  # Automated foraging (career_forager.py)
+  - add-source
+  - list-sources
+  - remove-source
+  - suggest-sources
+  - search-source
+  - heartbeat
+  - list-candidates
+  - triage
+  - promote
+
+# Entity types
+entities:
+  things:
+    - your-skill
+    - career-company
+    - career-position
+    - career-project
+    - career-learning-resource
+    - career-search-source
+    - career-candidate
+  people:
+    - alh-person
+  roles:
+    - career-agent-role
+  relations:
+    - career-collaboration
+    - career-contact-for-opportunity
+  artifacts:
+    - career-job-description
+    - career-resume
+    - career-cover-letter
+  fragments:
+    - career-requirement
+    - career-responsibility
+    - career-qualification
+  notes:
+    - career-application-note
+    - career-research-note
+    - career-interview-note
+    - career-strategy-note
+    - career-skill-gap-note
+    - career-fit-analysis-note
+    - career-interaction-note
+    - career-primer-note
+    - career-relationship-note
+
+# Status values
+status_values:
+  - researching
+  - applied
+  - phone-screen
+  - interviewing
+  - offer
+  - rejected
+  - withdrawn
+
+# Priority levels
+priority_levels:
+  - high
+  - medium
+  - low
+
+# Skill levels
+skill_levels:
+  - strong
+  - some
+  - learning
+  - none
+
+# Dashboard
+dashboard:
+  enabled: true
+  name: "Career Dashboard"
+  url_path: "/career"
+  port: 3001
+  description: "Pipeline kanban, people table, projects board, skills matrix, learning plan, and candidates triage"
+  views:
+    - name: Pipeline Board
+      path: /career
+      description: "Kanban view of applications by status"
+    - name: People
+      path: /career
+      description: "Table of the career graph's people (People tab)"
+    - name: Projects
+      path: /career
+      description: "Board of projects by status with collaborator chips (Projects tab)"
+    - name: Position Detail
+      path: /career/position/{id}
+      description: "Full detail page for a single position"
+    - name: Person Detail
+      path: /career/person/{id}
+      description: "Contact roles, collaborations, and relationship notes for a person"
+    - name: Project Detail
+      path: /career/project/{id}
+      description: "Project profile with collaborators and notes"
+    - name: Collection Detail
+      path: /career/collection/{id}
+      description: "Notes and resources in a collection"
+  internal:
+    pages: dashboard/src/app/(career)/career/
+    components: dashboard/src/components/career/
+    api_routes: dashboard/src/app/api/career/
+    lib: dashboard/src/lib/career.ts
+
+# Integration with other skills
+integrates_with:
+  - typedb-notebook

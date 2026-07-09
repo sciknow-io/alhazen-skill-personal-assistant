@@ -1,0 +1,53 @@
+name: chief-of-staff
+description: "Read-only cross-view over the executive AI team: daily agenda, weekly review, and orchestration routing"
+license: Apache-2.0
+compatibility: "Requires uv and TypeDB running; reads other skills' namespaces, defines none of its own"
+
+# Core files
+scripts:
+  - chief_of_staff.py
+schema:
+  namespace: none
+  depends_on: [anlst, advsr, scribe, ops, career]
+
+# Dependencies
+requires:
+  bins: [uv]
+  env: [TYPEDB_HOST, TYPEDB_PORT, TYPEDB_DATABASE]
+
+# Design pattern
+pattern: synthesis
+phases:
+  - collection: "Read-only queries across installed team-member namespaces"
+  - sensemaking: "Claude ranks, routes, and narrates — never just relays"
+
+# Core operations
+operations:
+  - daily-agenda
+  - weekly-review
+  - report-agenda
+  - report-week
+
+# Entity types — none; this skill is read-only over other namespaces
+entities: {}
+
+# Dashboard
+dashboard:
+  enabled: true
+  name: "Chief of Staff"
+  url_path: "/chief"
+  port: 3001
+  description: "Cross-skill daily agenda: what needs the operator today"
+  views:
+    - name: Agenda
+      path: /chief
+      description: "Sections per team member with items needing attention"
+
+# Integration with other skills
+integrates_with:
+  - typedb-notebook
+  - analyst
+  - advisor
+  - scribe
+  - ops
+  - career

@@ -1,0 +1,35 @@
+name: search_sources
+description: Map jhunt-search-source to career-search-source
+depends_on: []
+idempotent: true
+skolem_prefix: source
+skolem_keys: [id]
+datetime_attrs: [created-at]
+source_match: |
+  match
+    $s isa jhunt-search-source;
+  fetch {
+    "id": $s.id,
+    "name": $s.name,
+    "token": $s.jhunt-board-token,
+    "platform": $s.jhunt-board-platform,
+    "query": $s.jhunt-search-query,
+    "location": $s.jhunt-search-location,
+    "url": $s.alh-company-url,
+    "created": $s.created-at
+  };
+target_check: |
+  match $x isa career-search-source, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-search-source,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has name $name;
+optional_attrs:
+  token: career-board-token
+  platform: career-board-platform
+  query: career-search-query
+  location: career-search-location
+  url: alh-company-url
+  created: created-at

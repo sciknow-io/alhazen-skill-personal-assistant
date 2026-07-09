@@ -1,0 +1,29 @@
+name: job_descriptions
+description: Map jhunt-job-description artifacts to career-job-description
+depends_on: []
+idempotent: true
+skolem_prefix: artifact
+skolem_keys: [id]
+datetime_attrs: [created-at]
+source_match: |
+  match
+    $s isa jhunt-job-description;
+  fetch {
+    "id": $s.id,
+    "name": $s.name,
+    "content": $s.content,
+    "source_uri": $s.source-uri,
+    "created": $s.created-at
+  };
+target_check: |
+  match $x isa career-job-description, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-job-description,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has name $name;
+optional_attrs:
+  content: content
+  source_uri: source-uri
+  created: created-at

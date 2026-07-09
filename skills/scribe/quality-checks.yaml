@@ -1,0 +1,100 @@
+# Scribe Skill — Data Quality Checks
+# ===================================
+# Declarative audit rules executed by the generic audit runner.
+# Each check defines a TypeQL query to find violations, a severity,
+# and a root cause analysis with prevention fix.
+#
+# Run: uv run python skills/scribe/scribe.py audit
+
+skill: scribe
+version: 1
+repo: sciknow-io/alhazen-skill-personal-assistant
+
+checks:
+  # ── Process integrity ─────────────────────────────────────────
+
+  - name: pieces-shipped-without-persona-review
+    category: process
+    severity: high
+    description: "Pieces marked shipped whose drafts were never reviewed by any persona"
+    find_violations: |
+      match $p isa scribe-piece, has id $id, has name $n,
+        has scribe-piece-status "shipped";
+      not {
+        (draft: $d, piece: $p) isa scribe-draft-of;
+        (note: $r, subject: $d) isa alh-aboutness;
+        $r isa scribe-review-note;
+      };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $p isa scribe-piece, has id $id, has scribe-piece-status "shipped";
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Run the persona review loop retroactively, or accept and document why review was skipped"
+    root_cause:
+      component: prompt
+      file: SKILL.md
+      description: "The piece workflow allows status transitions without gating on review existence; an agent can jump straight to shipped"
+      prevention: "SKILL.md workflow requires every target persona to review each draft before operator-review; agents must not set status shipped without reviews"
+      test: "update-piece --status shipped on a piece with no scribe-review-note on any draft should be flagged by audit"
+
+  - name: drafts-without-scores
+    category: process
+    severity: medium
+    description: "Drafts with no dimension-score note (no distance-to-target signal for iteration)"
+    find_violations: |
+      match $d isa scribe-draft, has id $id, has name $n;
+      not {
+        (note: $s, subject: $d) isa alh-aboutness;
+        $s isa scribe-score-note;
+      };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $d isa scribe-draft, has id $id;
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Score each unscored draft on clarity/concision/voice/persuasion/overall (0-10) with concrete qualitative feedback"
+    root_cause:
+      component: convention
+      description: "add-draft does not require a follow-up add-scores call; iteration can proceed on vibes"
+      prevention: "SKILL.md step 6 makes scoring part of every review cycle; feedback rules forbid unscored iteration"
+      test: "Every scribe-draft should have at least one scribe-score-note before the next draft version is created"
+
+  - name: profile-without-samples
+    category: data-quality
+    severity: high
+    description: "Voice profiles with no linked writing samples (style guide is a guess, not grounded)"
+    find_violations: |
+      match $p isa scribe-voice-profile, has id $id, has name $n;
+      not { (sample: $s, voice-profile: $p) isa scribe-sample-informs; };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $p isa scribe-voice-profile, has id $id;
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Collect the operator's best writing per doc-type and link with add-sample --profile <id>"
+    root_cause:
+      component: script
+      file: scribe.py
+      function: cmd_create_profile
+      description: "create-profile does not require samples to exist first; a profile can be created empty"
+      prevention: "SKILL.md voice profiling workflow starts with sample collection before profile creation; agents should link samples via add-sample --profile"
+      test: "show-profile on any active profile should list at least three own samples"
+
+  - name: personas-unused
+    category: data-quality
+    severity: low
+    description: "Personas never targeted by any piece"
+    find_violations: |
+      match $pe isa scribe-persona, has id $id, has name $n;
+      not { (piece: $pc, persona: $pe) isa scribe-piece-targets; };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $pe isa scribe-persona, has id $id;
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Link the persona to relevant pieces (update-piece --add-target) or retire it if the audience no longer exists"
+    root_cause:
+      component: convention
+      description: "Personas are created speculatively during audience mapping but never wired into piece production"
+      prevention: "create-piece --targets should reference existing personas; review unused personas during piece planning"

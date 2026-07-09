@@ -1,0 +1,23 @@
+name: seeker_has_skill
+description: Rebuild seeker-has-skill links
+depends_on: [agent_role, your_skills]
+idempotent: true
+source_match: |
+  match
+    (seeker: $r, skill: $sk) isa jhunt-seeker-has-skill;
+  fetch {
+    "role_id": $r.id,
+    "skill_id": $sk.id
+  };
+target_check: |
+  match
+    $tr isa career-agent-role, has career-legacy-id $role_id;
+    $ts isa career-your-skill, has career-legacy-id $skill_id;
+    (seeker: $tr, skill: $ts) isa career-seeker-has-skill;
+  fetch { "x": 1 };
+target_insert: |
+  match
+    $tr isa career-agent-role, has career-legacy-id $role_id;
+    $ts isa career-your-skill, has career-legacy-id $skill_id;
+  insert
+    (seeker: $tr, skill: $ts) isa career-seeker-has-skill;

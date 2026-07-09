@@ -1,0 +1,100 @@
+# Ops Skill — Data Quality Checks
+# ================================
+# Declarative audit rules executed by `ops.py audit`.
+# Each check defines a TypeQL query to find violations, a severity,
+# and a root cause analysis with prevention fix.
+#
+# Run: uv run python skills/ops/ops.py audit
+
+skill: ops
+version: 1
+repo: sciknow-io/alhazen-skill-personal-assistant
+
+checks:
+  # ── The Iron Rule ─────────────────────────────────────────────
+
+  - name: automated-briefs-during-trial
+    category: process
+    severity: high
+    description: "Brief instances produced by automation while their spec was still designed/trial — a violation of the manual-before-automate iron rule"
+    find_violations: |
+      match $b isa ops-brief, has id $id, has name $n, has ops-produced-manually $m;
+      $m == false;
+      (spec: $s, brief: $b) isa ops-spec-produced;
+      $s has ops-spec-status $st;
+      { $st == "designed"; } or { $st == "trial"; };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $b isa ops-brief, has id $id;
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Investigate how automation ran against a trial spec; retire the automation until promote-spec has been earned, or correct the ops-produced-manually flag if it was mislabelled"
+    root_cause:
+      component: script
+      file: ops.py
+      function: cmd_log_brief
+      description: "log-brief refuses --automated while spec-status is designed/trial; a violation means data was written by another path or the spec was demoted after automated briefs existed"
+      prevention: "Only log automated briefs through ops.py log-brief; never edit ops-spec-status backwards while automated briefs exist"
+      test: "ops.py log-brief --spec <trial-spec> --automated --content x must return success:false with the manual-before-automate error"
+
+  # ── Commitments ───────────────────────────────────────────────
+
+  - name: overdue-commitments
+    category: follow-through
+    severity: high
+    description: "Commitments marked overdue that have not been resolved (done/dropped) — open past-due commitments are additionally computed at audit time by the CLI"
+    find_violations: |
+      match $c isa ops-commitment, has id $id, has name $n,
+        has ops-commitment-status "overdue";
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $c isa ops-commitment, has id $id;
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "For each: do it (then --status done), renegotiate the due date (--due), or explicitly drop it (--status dropped). Nothing silently rots."
+    root_cause:
+      component: convention
+      description: "Commitments surface in `today` but resolution requires an operator decision; overdue items pile up when the morning brief is skipped"
+      prevention: "report-today every morning; treat the Overdue section as a to-triage list, never as wallpaper"
+
+  # ── Stakeholder CRM ───────────────────────────────────────────
+
+  - name: dossiers-without-touchpoints-30d
+    category: data-quality
+    severity: medium
+    description: "Dossiers whose person has no logged touchpoints at all (declarative approximation; the 30-day recency window is computed by list-stakeholders/today)"
+    find_violations: |
+      match $d isa ops-dossier, has id $id, has name $n;
+      (dossier: $d, person: $p) isa ops-dossier-about;
+      not { (touchpoint: $t, person: $p) isa ops-touchpoint-with; };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $d isa ops-dossier, has id $id;
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "Either the relationship went quiet (log a touchpoint after your next interaction, or plan one) or the dossier is dead weight — archive it"
+    root_cause:
+      component: convention
+      description: "Dossiers get created in a burst of enthusiasm; touchpoint logging after every meaningful interaction is the habit that keeps them alive"
+      prevention: "SKILL.md workflow: log-touchpoint (with --undercurrent) after every meaningful interaction, within hours"
+
+  # ── Brief hygiene ─────────────────────────────────────────────
+
+  - name: active-specs-without-recent-brief
+    category: process
+    severity: medium
+    description: "Active specs with no produced brief instances at all (declarative approximation; cadence-based recency is computed by `today`)"
+    find_violations: |
+      match $s isa ops-brief-spec, has id $id, has name $n,
+        has ops-spec-status "active";
+      not { (spec: $s, brief: $b) isa ops-spec-produced; };
+      fetch { "id": $id, "name": $n };
+    count_total: |
+      match $s isa ops-brief-spec, has id $id;
+      fetch { "id": $id };
+    fix_type: manual
+    fix_description: "The automation stopped or never started: fix the trigger/cron, or retire-spec if the brief no longer earns its read"
+    root_cause:
+      component: convention
+      description: "promote-spec allows automation but does not create it; a promoted spec with no automation quietly produces nothing"
+      prevention: "Immediately after promote-spec, wire the Claude Code trigger/cron that produces and logs the brief, and confirm the first automated run"

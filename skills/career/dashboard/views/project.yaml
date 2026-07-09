@@ -1,0 +1,62 @@
+view: project
+primary_type: career-project
+label: "Project"
+label_plural: "Projects"
+url_path: /career/project/[id]
+nav_parent: hub
+notes: >
+  Projects are career-opportunity subtypes: bodies of work that build career
+  capital (open-source, papers, products, community efforts). Detail data
+  comes from career.py show-opportunity plus list-collaborators --target.
+
+browse:
+  label_field: name
+  subtitle_field: short-name
+  status_field: career-project-status
+  status_values: [exploring, active, paused, shipped, sunset]
+  sort_default: name
+  filter_axis: career-project-status
+
+detail:
+  header:
+    title_field: name
+    subtitle_portal: company
+    status_field: career-project-status
+    priority_field: priority-level
+    external_url_field: career-project-url
+  quick_info:
+    - {field: career-project-role,   label: "Your Role", icon: UserCog,   format: badge}
+    - {field: career-project-status, label: "Status",    icon: Activity,  format: badge}
+    - {field: career-project-url,    label: "URL",       icon: Link,      format: external_link}
+  layout: two_column
+  main_column:
+    - kind: table
+      name: "Collaborators"
+      via_relation: career-collaboration
+      via_role: work
+      target_role: collaborator
+      target_type: alh-person
+      columns:
+        - {field: name,                   label: "Person",   format: entity_link}
+        - {field: career-collab-role,     label: "Role",     format: badge}
+        - {field: career-collab-strength, label: "Strength", format: badge}
+        - {field: career-collab-since,    label: "Since",    format: date}
+  side_column:
+    - kind: notes_group
+      via_relation: aboutness
+      via_role: subject
+      notes_exclude: []
+      show_type_icons: true
+      collapsible: false
+
+portals:
+  - name: "Organization"
+    kind: preview_card
+    via_relation: career-opportunity-at-organization
+    via_role: opportunity
+    target_role: organization
+    target_type: career-company
+    preview_fields:
+      - {field: name,        label: "Name",    format: plain}
+      - {field: description, label: "About",   format: plain}
+      - {field: company-url, label: "Website", format: external_link}

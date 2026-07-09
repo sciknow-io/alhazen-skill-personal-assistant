@@ -1,0 +1,31 @@
+name: companies
+description: Map jhunt-company to career-company
+depends_on: []
+idempotent: true
+skolem_prefix: company
+skolem_keys: [id]
+datetime_attrs: [created-at]
+source_match: |
+  match
+    $s isa jhunt-company;
+  fetch {
+    "id": $s.id,
+    "name": $s.name,
+    "description": $s.description,
+    "created": $s.created-at,
+    "url": $s.alh-company-url,
+    "location": $s.alh-location
+  };
+target_check: |
+  match $x isa career-company, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-company,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has name $name;
+optional_attrs:
+  description: description
+  created: created-at
+  url: alh-company-url
+  location: alh-location

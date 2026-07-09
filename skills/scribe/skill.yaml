@@ -1,0 +1,123 @@
+name: scribe
+description: "Communication expert — voice profiles from your best writing, audience personas that review drafts, unlimited iteration with dimension-scored feedback"
+license: Apache-2.0
+compatibility: "Requires uv and TypeDB 3.x running (alh_personal database)"
+
+# Core files
+scripts:
+  - scribe.py
+typedb_schema: schema.tql
+schema:
+  namespace: scribe
+  depends_on: []
+
+# Dependencies
+requires:
+  bins: [uv]
+  env: [TYPEDB_HOST, TYPEDB_PORT, TYPEDB_DATABASE]
+  optional_env: []
+
+# TypeDB namespaces
+namespaces:
+  - schema.tql
+
+# Design pattern
+pattern: curation
+phases:
+  - profiling: "Collect best + aspirational samples; agent-as-linguist analysis; living style guide"
+  - targeting: "Detailed reader personas: cares-about, skeptical-of, action-drivers, reading-context"
+  - production: "Primer -> interview -> plan -> draft in voice"
+  - review: "Every target persona reviews; dimension scores 0-10; unlimited iteration"
+  - shipping: "Operator review checkpoint -> final -> shipped; hand-edits feed the style guide"
+
+# Core operations
+operations:
+  # Voice profiling
+  - add-sample
+  - list-samples
+  - create-profile
+  - update-profile
+  - show-profile
+  - add-analysis
+
+  # Audience personas
+  - add-persona
+  - list-personas
+
+  # Piece production
+  - create-piece
+  - add-note
+  - add-draft
+  - add-review
+  - add-scores
+  - update-piece
+  - list-pieces
+  - show-piece
+  - report-piece
+
+  # Quality
+  - audit
+
+# Entity types
+entities:
+  things:
+    - scribe-voice-profile
+    - scribe-persona
+    - scribe-piece
+  artifacts:
+    - scribe-style-guide
+    - scribe-writing-sample
+    - scribe-draft
+  notes:
+    - scribe-primer-note
+    - scribe-interview-note
+    - scribe-plan-note
+    - scribe-analysis-note
+    - scribe-review-note
+    - scribe-score-note
+
+# Status values
+status_values:
+  piece:
+    - planning
+    - drafting
+    - persona-review
+    - operator-review
+    - final
+    - shipped
+  profile:
+    - draft
+    - active
+    - evolving
+
+# Score dimensions (0-10 integers)
+score_dimensions:
+  - clarity
+  - concision
+  - voice
+  - persuasion
+  - overall
+
+# Dashboard
+dashboard:
+  enabled: true
+  name: "Scribe Dashboard"
+  url_path: "/scribe"
+  description: "Pieces board, voice profile, personas, and per-piece score trajectories"
+  views:
+    - name: Pieces Board
+      path: /scribe
+      description: "Kanban of pieces by piece-status; Voice Profile and Personas tabs"
+    - name: Piece Detail
+      path: /scribe/piece/{id}
+      description: "Drafts with score trajectory across versions and persona verdicts"
+  internal:
+    pages: dashboard/pages/scribe/
+    components: dashboard/components/
+    api_routes: dashboard/routes/
+    lib: dashboard/lib.ts
+
+# Integration with other skills
+integrates_with:
+  - typedb-notebook
+  - alhazen-core

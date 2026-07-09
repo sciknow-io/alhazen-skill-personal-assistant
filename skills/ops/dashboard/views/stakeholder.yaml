@@ -1,0 +1,54 @@
+view: stakeholder
+primary_type: ops-dossier
+label: "Stakeholder"
+label_plural: "Stakeholders"
+url_path: /ops/stakeholder/[id]
+nav_parent: hub
+notes: >
+  The [id] segment is the PERSON id (alh-person), not the dossier id — the
+  route calls ops.py show-stakeholder --person <id> which aggregates the
+  dossier, touchpoint history, commitments, and recent prep packs.
+
+browse:
+  label_field: person_name
+  subtitle_field: relationship
+  sort_default: last_touchpoint_date
+  filter_axis: relationship
+
+detail:
+  header:
+    title_field: person_name
+    subtitle_field: relationship
+  quick_info:
+    - {field: current_state,        label: "Current State",   icon: Compass,   format: plain}
+    - {field: open_commitment_count, label: "Open Commitments", icon: Handshake, format: count}
+    - {field: last_touchpoint_date, label: "Last Touchpoint", icon: Clock,     format: date}
+  layout: two_column
+  main_column:
+    - kind: special_panel
+      name: "Dossier"
+      source: dossier
+      fields: [relationship, current_state, history_summary]
+      notes: "The personal CRM record — the intangibles no official CRM holds"
+    - kind: timeline
+      name: "Touchpoints"
+      component: TouchpointTimeline
+      source: touchpoints
+      item_fields: [interaction_date, interaction_type, content, undercurrent, commitments_made]
+      notes: >
+        Undercurrents rendered as highlighted callouts — mood, hesitation,
+        what was NOT said. This is what makes meeting prep non-generic.
+  side_column:
+    - kind: table
+      name: "Commitments"
+      source: commitments
+      columns:
+        - {field: name,     label: "What",   format: plain}
+        - {field: owed_by,  label: "Owed By", format: badge}
+        - {field: due_date, label: "Due",    format: date}
+        - {field: status,   label: "Status", format: badge}
+    - kind: notes_group
+      name: "Recent Meeting Preps"
+      source: meeting_preps
+      item_fields: [meeting_date, meeting_title, content]
+      collapsed_by_default: true

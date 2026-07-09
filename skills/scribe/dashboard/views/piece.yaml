@@ -1,0 +1,76 @@
+view: piece
+primary_type: scribe-piece
+label: "Piece"
+label_plural: "Pieces"
+url_path: /scribe/piece/[id]
+nav_parent: hub
+
+browse:
+  label_field: name
+  subtitle_field: scribe-piece-type
+  status_field: scribe-piece-status
+  status_values:
+    [planning, drafting, persona-review, operator-review, final, shipped]
+  sort_default: created-at
+  filter_axis: scribe-piece-status
+
+detail:
+  header:
+    title_field: name
+    subtitle_field: scribe-piece-type
+    status_field: scribe-piece-status
+  quick_info:
+    - {field: scribe-goal,             label: "Goal",     icon: Target,       format: plain}
+    - {field: scribe-audience-summary, label: "Audience", icon: Users,        format: plain}
+    - {field: scribe-deadline,         label: "Deadline", icon: CalendarClock, format: date}
+  layout: two_column
+  main_column:
+    - kind: chart
+      name: "Score Trajectory"
+      component: ScoreTrajectory
+      source: show-piece.score_trajectory
+      notes: >
+        One line per dimension (clarity, concision, voice, persuasion, overall)
+        across draft versions (x-axis: version, y-axis: 0-10). Would-act ratio
+        annotated per version.
+    - kind: list
+      name: "Drafts"
+      via_relation: scribe-draft-of
+      via_role: piece
+      target_role: draft
+      target_type: scribe-draft
+      sort_by: scribe-version
+      item_fields: [name, scribe-version, created-at]
+      expand: content
+      nested:
+        - kind: notes_group
+          name: "Persona Verdicts"
+          via_relation: alh-aboutness
+          note_type: scribe-review-note
+          badge_field: scribe-would-act
+          annotate_via: scribe-review-by   # persona name on each review
+        - kind: notes_group
+          name: "Scores"
+          via_relation: alh-aboutness
+          note_type: scribe-score-note
+          fields: [scribe-clarity-score, scribe-concision-score, scribe-voice-score,
+                   scribe-persuasion-score, scribe-overall-score]
+          show_content: true
+  side_column:
+    - kind: table
+      name: "Target Personas"
+      via_relation: scribe-piece-targets
+      via_role: piece
+      target_role: persona
+      target_type: scribe-persona
+      columns:
+        - {field: name,                  label: "Persona",    format: plain}
+        - {field: scribe-cares-about,    label: "Cares About", format: plain}
+        - {field: scribe-skeptical-of,   label: "Skeptical Of", format: plain}
+    - kind: notes_group
+      name: "Primer / Interview / Plan"
+      via_relation: alh-aboutness
+      via_role: subject
+      notes_include: [scribe-primer-note, scribe-interview-note, scribe-plan-note]
+      show_type_icons: true
+      collapsible: true

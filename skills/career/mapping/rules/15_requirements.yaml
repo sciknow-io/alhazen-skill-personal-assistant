@@ -1,0 +1,29 @@
+name: requirements
+description: Map jhunt-requirement to career-requirement
+depends_on: []
+idempotent: true
+skolem_prefix: requirement
+skolem_keys: [id]
+datetime_attrs: [created-at]
+source_match: |
+  match
+    $s isa jhunt-requirement;
+  fetch {
+    "id": $s.id,
+    "skill_name": $s.jhunt-skill-name,
+    "level": $s.jhunt-skill-level,
+    "your_level": $s.jhunt-your-level,
+    "created": $s.created-at
+  };
+target_check: |
+  match $x isa career-requirement, has career-legacy-id $id; fetch { "id": $x.id };
+target_insert: |
+  insert
+    $t isa career-requirement,
+      has id $skolem_id,
+      has career-legacy-id $id,
+      has career-skill-name $skill_name;
+optional_attrs:
+  level: career-skill-level
+  your_level: career-your-level
+  created: created-at

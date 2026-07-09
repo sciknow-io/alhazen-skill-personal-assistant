@@ -1,0 +1,174 @@
+# =============================================================================
+# SCRIBE NAMESPACE (scribe-) - TypeDB 3.x Schema Extension
+# =============================================================================
+# The communication expert: voice profiles built from the operator's best
+# writing plus aspirational samples, audience personas that review drafts,
+# unlimited iteration with pointed feedback, and dimension-scored feedback
+# instead of "I don't like it".
+# Namespace prefix: scribe-*
+# =============================================================================
+
+define
+
+# -----------------------------------------------------------------------------
+# ATTRIBUTE TYPES - Scribe Specific
+# -----------------------------------------------------------------------------
+
+# Voice profile attributes
+attribute scribe-profile-status, value string;
+# Status values: draft | active | evolving
+attribute scribe-genre, value string;             # optional per-genre profile (board-update, linkedin, talk, ...)
+
+# Writing sample attributes
+attribute scribe-sample-kind, value string;       # own | aspirational
+attribute scribe-doc-type, value string;          # board-update | team-email | linkedin | talk | essay | ...
+attribute scribe-why-it-works, value string;      # why this sample earned its place
+
+# Persona attributes (a detailed reader persona)
+attribute scribe-cares-about, value string;       # what this reader cares about
+attribute scribe-skeptical-of, value string;      # what this reader is skeptical of
+attribute scribe-action-drivers, value string;    # what drives this reader to act
+attribute scribe-reading-context, value string;   # where/how/when they read (phone at 11pm, board packet, ...)
+
+# Piece attributes (a communication in flight)
+attribute scribe-piece-type, value string;        # board-update | team-email | linkedin | talk | essay | ...
+attribute scribe-goal, value string;              # what this piece must accomplish
+attribute scribe-piece-status, value string;
+# Status values: planning | drafting | persona-review | operator-review | final | shipped
+attribute scribe-audience-summary, value string;  # one-line audience description
+attribute scribe-deadline, value datetime;
+
+# Draft attributes
+attribute scribe-version, value integer;          # auto-incremented per piece
+
+# Review attributes
+attribute scribe-would-act, value boolean;        # persona verdict: would I act on this?
+
+# Dimension scores (0-10 integers; distance-to-target feedback)
+attribute scribe-clarity-score, value integer;
+attribute scribe-concision-score, value integer;
+attribute scribe-voice-score, value integer;
+attribute scribe-persuasion-score, value integer;
+attribute scribe-overall-score, value integer;
+
+
+# -----------------------------------------------------------------------------
+# RELATION TYPES - defined before entities so role names resolve in plays clauses
+# -----------------------------------------------------------------------------
+
+# SAMPLE-INFORMS - Links writing samples to the voice profile they inform
+relation scribe-sample-informs,
+    relates sample,
+    relates voice-profile;
+
+# DRAFT-OF - Links a versioned draft to its piece
+relation scribe-draft-of,
+    relates draft,
+    relates piece;
+
+# PIECE-TARGETS - Links a piece to the personas it must land with
+relation scribe-piece-targets,
+    relates piece,
+    relates persona;
+
+# REVIEW-BY - Links a persona review note to the persona that wrote it
+relation scribe-review-by,
+    relates review,
+    relates persona;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Voice Profiling
+# -----------------------------------------------------------------------------
+
+# SCRIBE-VOICE-PROFILE - The living style guide anchor. One per operator, plus
+# optional per-genre profiles. The guide text itself lives in a linked
+# scribe-style-guide artifact (via alh-representation).
+entity scribe-voice-profile sub alh-domain-thing,
+    owns scribe-profile-status,
+    owns scribe-genre,
+    plays scribe-sample-informs:voice-profile;
+
+# SCRIBE-STYLE-GUIDE - The style guide document (artifact). Linked to its
+# voice-profile via alh-representation (alh-artifact: $g, referent: $p).
+entity scribe-style-guide sub alh-artifact;
+
+# SCRIBE-WRITING-SAMPLE - Operator's best writing (own) or aspirational
+# samples from writers they admire (aspirational).
+entity scribe-writing-sample sub alh-artifact,
+    owns scribe-sample-kind,
+    owns scribe-doc-type,
+    owns scribe-why-it-works,
+    plays scribe-sample-informs:sample;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Audience Personas
+# -----------------------------------------------------------------------------
+
+# SCRIBE-PERSONA - A detailed reader persona that reviews drafts.
+entity scribe-persona sub alh-domain-thing,
+    owns scribe-cares-about,
+    owns scribe-skeptical-of,
+    owns scribe-action-drivers,
+    owns scribe-reading-context,
+    plays scribe-piece-targets:persona,
+    plays scribe-review-by:persona;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Pieces and Drafts
+# -----------------------------------------------------------------------------
+
+# SCRIBE-PIECE - A communication in flight.
+entity scribe-piece sub alh-domain-thing,
+    owns scribe-piece-type,
+    owns scribe-goal,
+    owns scribe-piece-status,
+    owns scribe-audience-summary,
+    owns scribe-deadline,
+    plays scribe-draft-of:piece,
+    plays scribe-piece-targets:piece;
+
+# SCRIBE-DRAFT - A versioned draft of a piece (version auto-increments).
+entity scribe-draft sub alh-artifact,
+    owns scribe-version,
+    plays scribe-draft-of:draft;
+
+
+# -----------------------------------------------------------------------------
+# ENTITY TYPES - Notes (attach to subjects via alh-aboutness)
+# -----------------------------------------------------------------------------
+
+# Operator's messy initial brain dump at piece creation
+entity scribe-primer-note sub alh-note;
+
+# Agent-interviews-operator record (assumptions, blind spots, context)
+entity scribe-interview-note sub alh-note;
+
+# Approved plan for a piece (plan/execute split - operating principle 4)
+entity scribe-plan-note sub alh-note;
+
+# AI-as-linguist analysis of samples: rhythm, sentence structure,
+# rhetorical preferences - the patterns the operator can't articulate
+entity scribe-analysis-note sub alh-note;
+
+# Persona review of a draft: is it clear? would I act? what's missing?
+# where would I stop reading?
+entity scribe-review-note sub alh-note,
+    owns scribe-would-act,
+    plays scribe-review-by:review;
+
+# Dimension-scored feedback on a draft (0-10 per dimension + concrete
+# qualitative content: structure vs phrasing vs ideas)
+entity scribe-score-note sub alh-note,
+    owns scribe-clarity-score,
+    owns scribe-concision-score,
+    owns scribe-voice-score,
+    owns scribe-persuasion-score,
+    owns scribe-overall-score;
+
+
+# =============================================================================
+# END SCRIBE NAMESPACE
+# =============================================================================

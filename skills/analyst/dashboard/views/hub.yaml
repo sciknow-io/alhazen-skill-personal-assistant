@@ -1,0 +1,82 @@
+hub: analyst
+label: "Analyst Dashboard"
+url_path: /analyst
+notes: >
+  Stats overview is computed client-side from the missions fetch and rendered
+  above the tab bar, always visible (missions total/active, divergent findings,
+  unverified findings, delivered). Findings and Deliverables tabs load lazily
+  on first switch. Deliverables are flattened from the deliverables array that
+  list-missions returns per mission (no separate CLI call).
+
+global_filters:
+  - field: anlst-priority-level
+    label: "Priority"
+    values: [all, high, medium, low]
+    applies_to_tabs: [missions]
+
+stats_component:
+  kind: computed_client_side
+  source_tab: missions
+  computed_fields:
+    - total
+    - active            # not delivered
+    - divergentFindings # sum of divergent_count
+    - unverifiedFindings
+    - delivered
+
+tabs:
+  - id: missions
+    label: "Missions"
+    icon: Compass
+    kind: view_board
+    entity_view: mission
+    board_axis: anlst-mission-status
+    board_column_order:
+      - briefing
+      - planning
+      - running
+      - aggregating
+      - verifying
+      - gated
+      - delivered
+    card_fields: [name, decision_context, priority, run_count, finding_count, gate]
+    component: MissionsBoard
+    inline_actions:
+      - {label: "Start Planning",  sets_field: anlst-mission-status, value: planning}
+      - {label: "Start Runs",      sets_field: anlst-mission-status, value: running}
+      - {label: "Aggregate",       sets_field: anlst-mission-status, value: aggregating}
+      - {label: "Verify",          sets_field: anlst-mission-status, value: verifying}
+      - {label: "Delivered",       sets_field: anlst-mission-status, value: delivered}
+
+  - id: findings
+    label: "Findings"
+    icon: ListChecks
+    kind: entity_table
+    entity_type: anlst-finding
+    cli_command: list-findings
+    cli_script: analyst.py
+    load: lazy
+    component: FindingsTable
+    filters:
+      - {field: anlst-divergent,            label: "Divergent only",  kind: toggle, cli_flag: --divergent}
+      - {field: anlst-verification-status,  label: "Unverified only", kind: toggle, cli_flag: --unverified}
+    columns:
+      - {field: claim,               label: "Claim",        format: plain}
+      - {field: mission_name,        label: "Mission",      format: link_to_mission}
+      - {field: consensus_count,     label: "Consensus",    format: plain}
+      - {field: divergent,           label: "Divergent",    format: badge}
+      - {field: verification_status, label: "Verification", format: badge}
+      - {field: confidence,          label: "Confidence",   format: badge}
+
+  - id: deliverables
+    label: "Deliverables"
+    icon: Package
+    kind: entity_table
+    entity_type: anlst-deliverable
+    load: lazy
+    source: missions.deliverables   # flattened client-side from list-missions
+    columns:
+      - {field: name,         label: "Deliverable", format: plain}
+      - {field: format,       label: "Format",      format: badge}
+      - {field: mission_name, label: "Mission",     format: link_to_mission}
+      - {field: created_at,   label: "Created",     format: date}
